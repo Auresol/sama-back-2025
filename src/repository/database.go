@@ -47,7 +47,9 @@ func InitDatabase(config *config.Config) error {
 // AutoMigrate runs database migrations
 func AutoMigrate() error {
 	// Import models here to register them for migration
-	return DB.AutoMigrate(&models.User{})
+	DB.AutoMigrate(&models.User{})
+	DB.AutoMigrate(&models.School{})
+	return nil
 }
 
 // GetDB returns the database instance

@@ -35,7 +35,7 @@ func NewUserService(jwtSecret string, jwtExpMins int) *UserService {
 // This method is for new user registration.
 func (s *UserService) RegisterUser(user *models.User) error {
 	// Validate input user data using the service's validator instance
-	if err := s.validator.Struct(user); err != nil {
+	if err := s.validator.StructExcept(user, "School"); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
 

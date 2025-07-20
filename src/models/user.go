@@ -19,15 +19,17 @@ type User struct {
 	ProfilePictureURL *string `json:"profile_picture_url,omitempty" gorm:"column:profile_picture_url"`
 	IsActive          bool    `json:"is_active,omitempty" gorm:"column:is_active"`
 
+	SchoolID  uint   `json:"school_id,omitempty" gorm:"column:school_id" validate:"required"`
 	Classroom string `json:"classroom,omitempty" gorm:"column:classroom"`
 	Number    int    `json:"number,omitempty" gorm:"column:number" validate:"required,number"`
-	SchoolID  uint   `json:"school_id,omitempty" gorm:"column:school_id"`
 	Status    string `json:"status,omitempty" gorm:"column:status"`
 	Language  string `json:"language,omitempty" gorm:"column:language"`
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt time.Time `gorm:"index"`
+	School School `json:"school" gorm:"foreignKey:SchoolID"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
 }
 
 // TableName specifies the table name for User model

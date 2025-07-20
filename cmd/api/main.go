@@ -61,7 +61,7 @@ func main() {
 	// Setup routes
 	router := routes.SetupRoutes()
 
-	// Add CORS middleware
+	// Add CORS middlewares
 	router.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -75,7 +75,7 @@ func main() {
 		c.Next()
 	})
 
-	// Add logging middleware
+	// Add logging middlewares
 	router.Use(func(c *gin.Context) {
 		start := time.Now()
 		path := c.Request.URL.Path

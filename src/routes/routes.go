@@ -26,9 +26,11 @@ func SetupRoutes() *gin.Engine {
 
 	// Initialize services
 	userService := services.NewUserService(jwtSecret, jwtExpirationMinutes)
+	schoolService := services.NewSchoolService()
 
 	// Initialize handlers
-	uesrController := controllers.NewUserController(userService)
+	userController := controllers.NewUserController(userService)
+	schoolController := controllers.NewSchoolController(schoolService)
 
 	// Swagger documentation
 	// docs.SwaggerInfo.BasePath = "/api/v1"
@@ -42,25 +44,33 @@ func SetupRoutes() *gin.Engine {
 	// Public routes (no authentication required)
 	publicRoutes := router.Group("/api/v1")
 	{
-		publicRoutes.POST("/register", uesrController.RegisterUser)
-		publicRoutes.POST("/login", uesrController.Login)
+		publicRoutes.POST("/register", userController.RegisterUser)
+		publicRoutes.POST("/login", userController.Login)
+
+		publicRoutes.POST("/schools", schoolController.CreateSchool)
+		publicRoutes.GET("/schools", schoolController.GetAllSchools)
+		publicRoutes.GET("/schools/:id", schoolController.GetSchoolByID)
+		publicRoutes.PUT("/schools/:id", schoolController.UpdateSchool)
+		publicRoutes.DELETE("/schools/:id", schoolController.DeleteSchool)
 	}
 
-	// Authenticated routes (protected by JWT middleware)
+	// Authenticated routes (protected by JWT middlewares)
 	authRoutes := router.Group("/api/v1")
-	authRoutes.Use(middlewares.AuthMiddleware(jwtSecret))
+	authRoutes.Use(middlewares.Authmiddlewares(jwtSecret))
 	{
-		authRoutes.GET("/me", uesrController.GetMyProfile)
-		authRoutes.GET("/users/:id", uesrController.GetUserByID)
-		authRoutes.PUT("/users/:id", uesrController.UpdateUserProfile)
-		authRoutes.PUT("/users/:id/password", uesrController.UpdateUserPassword) // New endpoint for password change
-		authRoutes.DELETE("/users/:id", uesrController.DeleteUser)
+		authRoutes.GET("/me", userController.GetMyProfile)
+		authRoutes.GET("/users/:id", userController.GetUserByID)
+		authRoutes.PUT("/users/:id", userController.UpdateUserProfile)
+		authRoutes.PUT("/users/:id/password", userController.UpdateUserPassword) // New endpoint for password change
+		authRoutes.DELETE("/users/:id", userController.DeleteUser)
 
-		// New routes based on features
-		authRoutes.GET("/schools/:school_id/users", uesrController.GetUsersBySchoolID)
-		authRoutes.PUT("/schools/:school_id/classrooms", uesrController.UpdateClassroomForSchool)
-		// authRoutes.PUT("/users/:student_id/classroom", uesrController.UpdateClassroomForStudent)
-		authRoutes.POST("/check-student-email", uesrController.CheckStudentEmailForRegistration)
+		// User-related routes with school context
+		// authRoutes.GET("/schools/:school_id/users", userController.GetUsersBySchoolID)
+		// authRoutes.PUT("/schools/:school_id/classrooms", userController.UpdateClassroomForSchool)
+		// authRoutes.PUT("/users/:student_id/classroom", userController.UpdateClassroomForStudent) // Uncommented
+		authRoutes.POST("/check-student-email", userController.CheckStudentEmailForRegistration)
+
+		// School Routes
 	}
 
 	return router

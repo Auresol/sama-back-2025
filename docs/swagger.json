@@ -84,6 +84,26 @@
                 }
             }
         },
+        "/health": {
+            "get": {
+                "description": "return if database is healty",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Check health",
+                "responses": {
+                    "200": {
+                        "description": "ok",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Authenticate user credentials and return a JWT token",
@@ -212,6 +232,338 @@
                     },
                     "409": {
                         "description": "User with this email already exists",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schools": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of all school records with pagination. Requires Sama Crew role.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "School"
+                ],
+                "summary": "Get all schools",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit for pagination",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of schools retrieved successfully",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.School"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (insufficient permissions)",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new school record. Requires ADMIN or Sama Crew role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "School"
+                ],
+                "summary": "Create a new school",
+                "parameters": [
+                    {
+                        "description": "School creation details",
+                        "name": "school",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CreateSchoolRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "School created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.School"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (insufficient permissions)",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "School with this email or short name already exists",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/schools/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a school's details by its ID. Accessible by ADMIN (for their school), SAMA_CREW, or any TCH/STD if they belong to that school.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "School"
+                ],
+                "summary": "Get school by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "School ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "School retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.School"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid school ID",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (not authorized to access this school's data)",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "School not found",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing school record by ID. Requires ADMIN (for their school) or Sama Crew role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "School"
+                ],
+                "summary": "Update a school",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "School ID to update",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "School update details",
+                        "name": "school",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.UpdateSchoolRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "School updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.School"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request payload or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (insufficient permissions or not authorized for this school)",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "School not found",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "New email or short name already exists for another school",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a school record by ID. Requires ADMIN (for their school) or Sama Crew role.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "School"
+                ],
+                "summary": "Delete a school",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "School ID to delete",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "School deleted successfully"
+                    },
+                    "400": {
+                        "description": "Invalid school ID",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden (insufficient permissions or not authorized for this school)",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "School not found",
                         "schema": {
                             "$ref": "#/definitions/controllers.ErrorResponse"
                         }
@@ -748,6 +1100,53 @@
                 }
             }
         },
+        "controllers.CreateSchoolRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "english_name",
+                "location",
+                "phone",
+                "school_year",
+                "semester",
+                "short_name",
+                "thai_name"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "info@smk.ac.th"
+                },
+                "english_name": {
+                    "type": "string",
+                    "example": "Samakkee Wittaya School"
+                },
+                "location": {
+                    "type": "string",
+                    "example": "Bangkok, Thailand"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+66812345678"
+                },
+                "school_year": {
+                    "type": "integer",
+                    "example": 2568
+                },
+                "semester": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "short_name": {
+                    "type": "string",
+                    "example": "SMK"
+                },
+                "thai_name": {
+                    "type": "string",
+                    "example": "โรงเรียนสามัคคีวิทยา"
+                }
+            }
+        },
         "controllers.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -861,6 +1260,43 @@
                 }
             }
         },
+        "controllers.UpdateSchoolRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "new_info@smk.ac.th"
+                },
+                "english_name": {
+                    "type": "string",
+                    "example": "New Samakkee Wittaya School"
+                },
+                "location": {
+                    "type": "string",
+                    "example": "Nonthaburi, Thailand"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+66923456789"
+                },
+                "school_year": {
+                    "type": "integer",
+                    "example": 2569
+                },
+                "semester": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "short_name": {
+                    "type": "string",
+                    "example": "NSMK"
+                },
+                "thai_name": {
+                    "type": "string",
+                    "example": "โรงเรียนสามัคคีวิทยาใหม่"
+                }
+            }
+        },
         "controllers.UpdateStudentClassroomRequest": {
             "type": "object",
             "required": [
@@ -939,6 +1375,62 @@
                 }
             }
         },
+        "models.School": {
+            "type": "object",
+            "required": [
+                "email",
+                "english_name",
+                "location",
+                "phone",
+                "school_year",
+                "semester",
+                "short_name",
+                "thai_name"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "description": "Added unique index for email",
+                    "type": "string"
+                },
+                "english_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "phone": {
+                    "description": "e164 for phone number validation",
+                    "type": "string"
+                },
+                "school_year": {
+                    "description": "School year must be positive",
+                    "type": "integer"
+                },
+                "semester": {
+                    "description": "Semester must be positive",
+                    "type": "integer"
+                },
+                "short_name": {
+                    "description": "Added unique index for short_name",
+                    "type": "string"
+                },
+                "thai_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "models.User": {
             "type": "object",
             "required": [
@@ -952,10 +1444,10 @@
                 "classroom": {
                     "type": "string"
                 },
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
-                "deletedAt": {
+                "deleted_at": {
                     "type": "string"
                 },
                 "email": {
@@ -989,13 +1481,16 @@
                 "role": {
                     "type": "string"
                 },
+                "school": {
+                    "$ref": "#/definitions/models.School"
+                },
                 "school_id": {
                     "type": "integer"
                 },
                 "status": {
                     "type": "string"
                 },
-                "updatedAt": {
+                "updated_at": {
                     "type": "string"
                 },
                 "user_id": {

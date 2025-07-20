@@ -14,8 +14,8 @@ const (
 	UserContextKey = "userClaims"
 )
 
-// AuthMiddleware validates JWT tokens and injects user claims into the Gin context.
-func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
+// Authmiddlewares validates JWT tokens and injects user claims into the Gin context.
+func Authmiddlewares(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {

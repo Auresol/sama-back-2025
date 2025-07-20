@@ -12,6 +12,42 @@ definitions:
     - email
     - school_id
     type: object
+  controllers.CreateSchoolRequest:
+    properties:
+      email:
+        example: info@smk.ac.th
+        type: string
+      english_name:
+        example: Samakkee Wittaya School
+        type: string
+      location:
+        example: Bangkok, Thailand
+        type: string
+      phone:
+        example: "+66812345678"
+        type: string
+      school_year:
+        example: 2568
+        type: integer
+      semester:
+        example: 1
+        type: integer
+      short_name:
+        example: SMK
+        type: string
+      thai_name:
+        example: โรงเรียนสามัคคีวิทยา
+        type: string
+    required:
+    - email
+    - english_name
+    - location
+    - phone
+    - school_year
+    - semester
+    - short_name
+    - thai_name
+    type: object
   controllers.ErrorResponse:
     properties:
       message:
@@ -95,6 +131,33 @@ definitions:
     - new_classroom
     - old_classroom
     type: object
+  controllers.UpdateSchoolRequest:
+    properties:
+      email:
+        example: new_info@smk.ac.th
+        type: string
+      english_name:
+        example: New Samakkee Wittaya School
+        type: string
+      location:
+        example: Nonthaburi, Thailand
+        type: string
+      phone:
+        example: "+66923456789"
+        type: string
+      school_year:
+        example: 2569
+        type: integer
+      semester:
+        example: 2
+        type: integer
+      short_name:
+        example: NSMK
+        type: string
+      thai_name:
+        example: โรงเรียนสามัคคีวิทยาใหม่
+        type: string
+    type: object
   controllers.UpdateStudentClassroomRequest:
     properties:
       new_classroom:
@@ -152,13 +215,54 @@ definitions:
         example: active
         type: string
     type: object
+  models.School:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      email:
+        description: Added unique index for email
+        type: string
+      english_name:
+        type: string
+      id:
+        type: integer
+      location:
+        type: string
+      phone:
+        description: e164 for phone number validation
+        type: string
+      school_year:
+        description: School year must be positive
+        type: integer
+      semester:
+        description: Semester must be positive
+        type: integer
+      short_name:
+        description: Added unique index for short_name
+        type: string
+      thai_name:
+        type: string
+      updated_at:
+        type: string
+    required:
+    - email
+    - english_name
+    - location
+    - phone
+    - school_year
+    - semester
+    - short_name
+    - thai_name
+    type: object
   models.User:
     properties:
       classroom:
         type: string
-      createdAt:
+      created_at:
         type: string
-      deletedAt:
+      deleted_at:
         type: string
       email:
         description: Unique index for email
@@ -181,11 +285,13 @@ definitions:
         type: string
       role:
         type: string
+      school:
+        $ref: '#/definitions/models.School'
       school_id:
         type: integer
       status:
         type: string
-      updatedAt:
+      updated_at:
         type: string
       user_id:
         description: Unique index for user_id
@@ -255,6 +361,19 @@ paths:
       summary: Check if student email is eligible for registration
       tags:
       - Account
+  /health:
+    get:
+      description: return if database is healty
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ok
+          schema:
+            type: string
+      summary: Check health
+      tags:
+      - Health
   /login:
     post:
       consumes:
@@ -346,6 +465,226 @@ paths:
       summary: Register a new user
       tags:
       - Account
+  /schools:
+    get:
+      description: Retrieve a list of all school records with pagination. Requires
+        Sama Crew role.
+      parameters:
+      - default: 10
+        description: Limit for pagination
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of schools retrieved successfully
+          schema:
+            items:
+              $ref: '#/definitions/models.School'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden (insufficient permissions)
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all schools
+      tags:
+      - School
+    post:
+      consumes:
+      - application/json
+      description: Create a new school record. Requires ADMIN or Sama Crew role.
+      parameters:
+      - description: School creation details
+        in: body
+        name: school
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.CreateSchoolRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: School created successfully
+          schema:
+            $ref: '#/definitions/models.School'
+        "400":
+          description: Invalid request payload or validation error
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden (insufficient permissions)
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "409":
+          description: School with this email or short name already exists
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new school
+      tags:
+      - School
+  /schools/{id}:
+    delete:
+      description: Delete a school record by ID. Requires ADMIN (for their school)
+        or Sama Crew role.
+      parameters:
+      - description: School ID to delete
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: School deleted successfully
+        "400":
+          description: Invalid school ID
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden (insufficient permissions or not authorized for this
+            school)
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: School not found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a school
+      tags:
+      - School
+    get:
+      description: Retrieve a school's details by its ID. Accessible by ADMIN (for
+        their school), SAMA_CREW, or any TCH/STD if they belong to that school.
+      parameters:
+      - description: School ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: School retrieved successfully
+          schema:
+            $ref: '#/definitions/models.School'
+        "400":
+          description: Invalid school ID
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden (not authorized to access this school's data)
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: School not found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get school by ID
+      tags:
+      - School
+    put:
+      consumes:
+      - application/json
+      description: Update an existing school record by ID. Requires ADMIN (for their
+        school) or Sama Crew role.
+      parameters:
+      - description: School ID to update
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: School update details
+        in: body
+        name: school
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.UpdateSchoolRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: School updated successfully
+          schema:
+            $ref: '#/definitions/models.School'
+        "400":
+          description: Invalid request payload or validation error
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "403":
+          description: Forbidden (insufficient permissions or not authorized for this
+            school)
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: School not found
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "409":
+          description: New email or short name already exists for another school
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a school
+      tags:
+      - School
   /schools/{school_id}/classrooms:
     put:
       consumes:
