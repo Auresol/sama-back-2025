@@ -2,21 +2,32 @@ package models
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
+// User represents a user in the system, mapped to a PostgreSQL table.
 type User struct {
-	ID        uint           `json:"id" gorm:"primaryKey"`
-	Email     string         `json:"email" gorm:"uniqueIndex;not null" binding:"required,email"`
-	Password  string         `json:"-" gorm:"not null" binding:"required,min=6"` // "-" means this field won't be included in JSON
-	FirstName string         `json:"first_name" gorm:"not null" binding:"required,min=2"`
-	LastName  string         `json:"last_name" gorm:"not null" binding:"required,min=2"`
-	Role      string         `json:"role" gorm:"default:'user'" binding:"oneof=user admin"`
-	Active    bool           `json:"active" gorm:"default:true"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	ID uint `gorm:"primarykey"`
+
+	UserID   string `json:"user_id,omitempty" gorm:"column:user_id;uniqueIndex"` // Unique index for user_id
+	Role     string `json:"role,omitempty" gorm:"column:role" validate:"required"`
+	Email    string `json:"email,omitempty" gorm:"column:email;uniqueIndex" validate:"required,email"` // Unique index for email
+	Password string `json:"-" gorm:"column:password"`
+
+	Phone             string  `json:"phone,omitempty" gorm:"column:phone"`
+	Firstname         string  `json:"firstname,omitempty" gorm:"column:firstname" validate:"required"`
+	Lastname          string  `json:"lastname,omitempty" gorm:"column:lastname" validate:"required"`
+	ProfilePictureURL *string `json:"profile_picture_url,omitempty" gorm:"column:profile_picture_url"`
+	IsActive          bool    `json:"is_active,omitempty" gorm:"column:is_active"`
+
+	Classroom string `json:"classroom,omitempty" gorm:"column:classroom"`
+	Number    int    `json:"number,omitempty" gorm:"column:number" validate:"required,number"`
+	SchoolID  uint   `json:"school_id,omitempty" gorm:"column:school_id"`
+	Status    string `json:"status,omitempty" gorm:"column:status"`
+	Language  string `json:"language,omitempty" gorm:"column:language"`
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt time.Time `gorm:"index"`
 }
 
 // TableName specifies the table name for User model
