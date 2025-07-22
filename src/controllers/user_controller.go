@@ -296,9 +296,9 @@ func (h *UserController) UpdateUserProfile(c *gin.Context) {
 	if req.ProfilePictureURL != nil { // Check if pointer is not nil
 		userToUpdate.ProfilePictureURL = req.ProfilePictureURL
 	}
-	if req.IsActive != nil { // Check if pointer is not nil
-		userToUpdate.IsActive = *req.IsActive
-	}
+	// if req.IsActive != nil { // Check if pointer is not nil
+	// 	userToUpdate.IsActive = *req.IsActive
+	// }
 	if req.Classroom != "" {
 		userToUpdate.Classroom = req.Classroom
 	}

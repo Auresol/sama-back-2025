@@ -49,6 +49,7 @@ func AutoMigrate() error {
 	// Import models here to register them for migration
 	DB.AutoMigrate(&models.User{})
 	DB.AutoMigrate(&models.School{})
+	DB.AutoMigrate(&models.Activity{})
 	return nil
 }
 

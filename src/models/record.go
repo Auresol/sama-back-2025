@@ -6,13 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // Record represents an activity record, mapped to a PostgreSQL table.
 type Record struct {
-	gorm.Model // Provides ID, CreatedAt, UpdatedAt, DeletedAt
+	ID uint `gorm:"primarykey"`
 
 	ActivityTypeID string `json:"activity_type_id,omitempty" gorm:"column:activity_type_id" validate:"required"`
 	ActivityName   string `json:"activity_name,omitempty" gorm:"column:activity_name" validate:"required"`
@@ -32,6 +30,10 @@ type Record struct {
 	StatusUpdates StatusUpdates `json:"status_list,omitempty" gorm:"column:status_list;type:jsonb"`
 	// Current status of the record, validated against a predefined enum.
 	Status string `json:"status,omitempty" gorm:"column:status" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
 }
 
 // StatusUpdateTime represents a single status update event.

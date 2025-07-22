@@ -27,10 +27,12 @@ func SetupRoutes() *gin.Engine {
 	// Initialize services
 	userService := services.NewUserService(jwtSecret, jwtExpirationMinutes)
 	schoolService := services.NewSchoolService()
+	activityService := services.NewActivityService()
 
 	// Initialize handlers
 	userController := controllers.NewUserController(userService)
 	schoolController := controllers.NewSchoolController(schoolService)
+	activityController := controllers.NewActivityController(activityService)
 
 	// Swagger documentation
 	// docs.SwaggerInfo.BasePath = "/api/v1"
@@ -70,7 +72,12 @@ func SetupRoutes() *gin.Engine {
 		// authRoutes.PUT("/users/:student_id/classroom", userController.UpdateClassroomForStudent) // Uncommented
 		authRoutes.POST("/check-student-email", userController.CheckStudentEmailForRegistration)
 
-		// School Routes
+		// Activity Routes (newly added)
+		authRoutes.POST("/activities", activityController.CreateActivity)
+		authRoutes.GET("/activities", activityController.GetAllActivities)
+		authRoutes.GET("/activities/:id", activityController.GetActivityByID)
+		authRoutes.PUT("/activities/:id", activityController.UpdateActivity)
+		authRoutes.DELETE("/activities/:id", activityController.DeleteActivity)
 	}
 
 	return router
