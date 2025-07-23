@@ -34,18 +34,23 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 		// GORM will automatically save associations if activity.CustomStudentIDs contains valid User models
 		// and the association table is set up correctly.
 		// If activity.CustomStudentIDs only contains IDs, you might need to fetch User objects first.
-		if activity.CoverageType == "CUSTOM" && len(activity.CustomStudentIDs) > 0 {
-			// Ensure that the CustomStudentIDs are correctly associated.
-			// This typically means activity.CustomStudentIDs contains *actual* User models loaded from DB,
-			// or at least User models with only their ID set.
-			// GORM's Create should handle this if the IDs are valid.
-			// If not, explicit association might be needed:
-			// for _, student := range activity.CustomStudentIDs {
-			// 	if err := tx.Model(activity).Association("CustomStudentIDs").Append(&student); err != nil {
-			// 		return fmt.Errorf("failed to append custom student ID: %w", err)
-			// 	}
-			// }
-		}
+		// if activity.CoverageType == "CUSTOM" && len(activity.CustomStudentIDs) > 0 {
+		// 	// Ensure that the CustomStudentIDs are correctly associated.
+		// 	// This typically means activity.CustomStudentIDs contains *actual* User models loaded from DB,
+		// 	// or at least User models with only their ID set.
+		// 	// GORM's Create should handle this if the IDs are valid.
+		// 	// If not, explicit association might be needed:
+		// 	// for _, student := range activity.CustomStudentIDs {
+		// 	// 	if err := tx.Model(activity).Association("CustomStudentIDs").Append(&student); err != nil {
+		// 	// 		return fmt.Errorf("failed to append custom student ID: %w", err)
+		// 	// 	}
+		// 	// }
+		// }
+
+		// for _, classroom := range *exclusiveClassrooms {
+		// 	tx.Model(activity).Association("ExclusiveClassrooms").Append()
+		// }
+
 		return nil
 	})
 }
@@ -99,23 +104,23 @@ func (r *ActivityRepository) UpdateActivity(activity *models.Activity) error {
 			return fmt.Errorf("failed to update activity: %w", err)
 		}
 
-		// Handle CustomStudentIDs association update
-		// Option 1: Replace all existing associations
-		if activity.CoverageType == "CUSTOM" {
-			// GORM's Replace takes a slice of models. If CustomStudentIDs are just IDs,
-			// you need to convert them to minimal User models first.
-			var userModels []models.User
-			for _, user := range activity.CustomStudentIDs { // activity.CustomStudentIDs already `[]User`
-				userModels = append(userModels, models.User{ID: user.ID})
-			}
-			if err := tx.Model(activity).Association("CustomStudentIDs").Replace(userModels); err != nil {
-				return fmt.Errorf("failed to update custom student IDs: %w", err)
-			}
-		} else { // CoverageType is "REQUIRE" or other, clear custom students
-			if err := tx.Model(activity).Association("CustomStudentIDs").Clear(); err != nil {
-				return fmt.Errorf("failed to clear custom student IDs: %w", err)
-			}
-		}
+		// // Handle CustomStudentIDs association update
+		// // Option 1: Replace all existing associations
+		// if activity.CoverageType == "CUSTOM" {
+		// 	// GORM's Replace takes a slice of models. If CustomStudentIDs are just IDs,
+		// 	// you need to convert them to minimal User models first.
+		// 	var userModels []models.User
+		// 	for _, user := range activity.CustomStudentIDs { // activity.CustomStudentIDs already `[]User`
+		// 		userModels = append(userModels, models.User{ID: user.ID})
+		// 	}
+		// 	if err := tx.Model(activity).Association("CustomStudentIDs").Replace(userModels); err != nil {
+		// 		return fmt.Errorf("failed to update custom student IDs: %w", err)
+		// 	}
+		// } else { // CoverageType is "REQUIRE" or other, clear custom students
+		// 	if err := tx.Model(activity).Association("CustomStudentIDs").Clear(); err != nil {
+		// 		return fmt.Errorf("failed to clear custom student IDs: %w", err)
+		// 	}
+		// }
 
 		return nil
 	})

@@ -28,6 +28,7 @@ func NewUserController(userService *services.UserService) *UserController {
 
 // RegisterRequest represents the request body for user registration.
 type RegisterRequest struct {
+	UserID    string `json:"user_id" example:"10101"`
 	Email     string `json:"email" binding:"required,email" example:"user@example.com"`
 	Password  string `json:"password" binding:"required,min=8" example:"Secure_P@ss1"` // Custom validation for password
 	Firstname string `json:"firstname" binding:"required" example:"John"`
@@ -36,7 +37,7 @@ type RegisterRequest struct {
 	SchoolID  uint   `json:"school_id" binding:"required,gt=0" example:"1"`
 	Phone     string `json:"phone,omitempty" example:"+1234567890"`
 	Classroom string `json:"classroom,omitempty" example:"A101"`
-	Number    int    `json:"number,omitempty" example:"1"`
+	Number    uint   `json:"number,omitempty" example:"1"`
 	Language  string `json:"language,omitempty" example:"en"`
 }
 
@@ -76,6 +77,7 @@ func (h *UserController) RegisterUser(c *gin.Context) {
 	}
 
 	user := &models.User{
+		UserID:    req.UserID,
 		Email:     req.Email,
 		Password:  req.Password, // Plain password, will be hashed in service
 		Firstname: req.Firstname,
@@ -220,7 +222,7 @@ type UpdateUserProfileRequest struct {
 	ProfilePictureURL *string `json:"profile_picture_url,omitempty" example:"http://example.com/pic.jpg"`
 	IsActive          *bool   `json:"is_active,omitempty" example:"true"` // Pointer for optional boolean update
 	Classroom         string  `json:"classroom,omitempty" example:"B202"`
-	Number            *int    `json:"number,omitempty" binding:"omitempty,number" example:"2"` // Pointer for optional int update
+	Number            *uint   `json:"number,omitempty" binding:"omitempty,number" example:"2"` // Pointer for optional int update
 	Status            string  `json:"status,omitempty" example:"active"`
 	Language          string  `json:"language,omitempty" example:"th"`
 	// Role and SchoolID are typically not updated via this endpoint or require special permissions

@@ -3,7 +3,6 @@ package models
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 )
@@ -16,15 +15,14 @@ type Activity struct {
 
 	// Template defines the structure of data this activity should contain (JSON).
 	// Example: {"fields": [{"name": "answer", "type": "SHORT_ANS"}, {"name": "date", "type": "DATE"}]}
-	Template ActivityTemplate `json:"template" gorm:"column:template;type:jsonb"`
+	Template map[string]interface{} `json:"template" gorm:"column:template;serializer:json"`
 
 	IsRequired   bool   `json:"is_required,omitempty" gorm:"column:is_required" validate:"required"`
 	CoverageType string `json:"coverage_type,omitempty" gorm:"column:coverage_type" validate:"required,oneof=ALL JUNIOR SENIOR"`
 
-	SchoolID           uint         `json:"school_id,omitempty" gorm:"column:school_id"`
-	ExclusiveClassroom []*Classroom `json:"exclusive_classroom,omitempty" gorm:"column:exclusive_classroom;many2many:activity_exclusive_classroom"`
-
-	ExclusiveStudentIDs []*User `json:"exclusive_student_ids,omitempty" gorm:"column:exclusive_student_ids;many2many:activity_exclusive_student_ids"`
+	SchoolID            uint         `json:"school_id,omitempty" gorm:"column:school_id"`
+	ExclusiveClassrooms []*Classroom `json:"exclusive_classroom,omitempty" gorm:"many2many:activity_exclusive_classroom"`
+	ExclusiveStudentIDs []*User      `json:"exclusive_student_ids,omitempty" gorm:"many2many:activity_exclusive_student_ids"`
 
 	OwnerID uint `json:"owner_id,omitempty" gorm:"column:owner_id;index" validate:"required,gt=0"` // ID of the creator (User)
 
@@ -73,7 +71,7 @@ func (a *ActivityTemplate) Scan(value interface{}) error {
 	case string:
 		jsonBytes = []byte(v)
 	default:
-		return errors.New(fmt.Sprintf("unsupported type for ActivityTemplate: %T", value))
+		return fmt.Errorf("unsupported type for ActivityTemplate: %T", value)
 	}
 
 	if len(jsonBytes) == 0 {
@@ -97,10 +95,9 @@ func (Activity) TableName() string {
 	return "activities"
 }
 
-// ACTIVITY_STATUS_ENUM defines the allowed values for the 'Status' field.
-var ACTIVITY_STATUS_ENUM = []string{"REQUIRE", "CUSTOM"}
+var ACTIVITY_COVERAGE_TYPE = []string{"ALL", "JUNIOR", "SENIOR"}
 
 // ACTIVITY_UPDATE_PROTOCOL_ENUM defines the allowed values for the 'UpdateProtocol' field.
 var ACTIVITY_UPDATE_PROTOCOL_ENUM = []string{"RE_EVALUATE_ALL_RECORDS", "IGNORE_PAST_RECORDS"}
 
-var ACTIVITY_FINISHED_CONDITION = []string{"TIMES", "HOURS"}
+var ACTIVITY_FINISHED_UNIT = []string{"TIMES", "HOURS"}

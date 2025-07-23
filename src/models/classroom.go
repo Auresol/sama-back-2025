@@ -5,10 +5,8 @@ import (
 )
 
 type Classroom struct {
-	ID uint `gorm:"primarykey"`
-
-	SchoolID  uint   `json:"school_id,omitempty" gorm:"column:school_id;not null;uniqueIndex:idx_school_classroom,priority:1"`
-	Classroom string `json:"classroom,omitempty" gorm:"column:classroom;not null;uniqueIndex:idx_school_classroom,priority:2"`
+	SchoolID  uint   `json:"school_id,omitempty" gorm:"column:school_id;primarykey;autoIncrement:false"`
+	Classroom string `json:"classroom,omitempty" gorm:"column:classroom;primarykey;autoIncrement:false"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

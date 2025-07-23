@@ -32,39 +32,36 @@ func NewActivityService() *ActivityService {
 // validateActivityData performs custom validation beyond struct tags.
 func (s *ActivityService) validateActivityData(activity *models.Activity) error {
 	// Validate CoverageType, FinishedCondition, Status, UpdateProtocol against enums
-	if !utils.Contains(models.ACTIVITY_STATUS_ENUM, activity.CoverageType) { // CoverageType enum is actually Status, confusing naming in model
+	if !utils.Contains(models.ACTIVITY_COVERAGE_TYPE, activity.CoverageType) { // CoverageType enum is actually Status, confusing naming in model
 		return fmt.Errorf("invalid CoverageType: %s", activity.CoverageType)
 	}
-	if !utils.Contains(models.ACTIVITY_FINISHED_CONDITION, activity.FinishedCondition) {
-		return fmt.Errorf("invalid FinishedCondition: %s", activity.FinishedCondition)
-	}
-	if !utils.Contains(models.ACTIVITY_STATUS_ENUM, activity.Status) {
-		return fmt.Errorf("invalid Status: %s", activity.Status)
+	if !utils.Contains(models.ACTIVITY_FINISHED_UNIT, activity.FinishedUnit) {
+		return fmt.Errorf("invalid FinishedCondition: %s", activity.FinishedUnit)
 	}
 	if !utils.Contains(models.ACTIVITY_UPDATE_PROTOCOL_ENUM, activity.UpdateProtocol) {
 		return fmt.Errorf("invalid UpdateProtocol: %s", activity.UpdateProtocol)
 	}
 
-	// Conditional validation for CustomStudentIDs
-	if activity.CoverageType == "CUSTOM" {
-		if len(activity.CustomStudentIDs) == 0 {
-			return errors.New("CustomStudentIDs are required when CoverageType is CUSTOM")
-		}
-		// Validate if all CustomStudentIDs refer to existing users
-		for _, student := range activity.CustomStudentIDs {
-			_, err := s.userRepo.GetUserByID(student.ID)
-			if err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return fmt.Errorf("custom student ID %d not found", student.ID)
-				}
-				return fmt.Errorf("failed to validate custom student ID %d: %w", student.ID, err)
-			}
-		}
-	} else if activity.CoverageType == "REQUIRE" {
-		if len(activity.CustomStudentIDs) > 0 {
-			return errors.New("CustomStudentIDs must be empty when CoverageType is REQUIRE")
-		}
-	}
+	// // Conditional validation for CustomStudentIDs
+	// if activity.CoverageType == "CUSTOM" {
+	// 	if len(activity.CustomStudentIDs) == 0 {
+	// 		return errors.New("CustomStudentIDs are required when CoverageType is CUSTOM")
+	// 	}
+	// 	// Validate if all CustomStudentIDs refer to existing users
+	// 	for _, student := range activity.CustomStudentIDs {
+	// 		_, err := s.userRepo.GetUserByID(student.ID)
+	// 		if err != nil {
+	// 			if errors.Is(err, gorm.ErrRecordNotFound) {
+	// 				return fmt.Errorf("custom student ID %d not found", student.ID)
+	// 			}
+	// 			return fmt.Errorf("failed to validate custom student ID %d: %w", student.ID, err)
+	// 		}
+	// 	}
+	// } else if activity.CoverageType == "REQUIRE" {
+	// 	if len(activity.CustomStudentIDs) > 0 {
+	// 		return errors.New("CustomStudentIDs must be empty when CoverageType is REQUIRE")
+	// 	}
+	// }
 
 	// Validate OwnerID exists
 	owner, err := s.userRepo.GetUserByID(activity.OwnerID)
@@ -130,13 +127,11 @@ func (s *ActivityService) UpdateActivity(activity *models.Activity) error {
 	existingActivity.Name = activity.Name
 	existingActivity.Template = activity.Template
 	existingActivity.CoverageType = activity.CoverageType
-	existingActivity.CustomStudentIDs = activity.CustomStudentIDs // This will be handled by repo association
+	// existingActivity.CustomStudentIDs = activity.CustomStudentIDs // This will be handled by repo association
 	existingActivity.IsActive = activity.IsActive
-	existingActivity.FinishedCondition = activity.FinishedCondition
-	existingActivity.Status = activity.Status
+	existingActivity.FinishedUnit = activity.FinishedUnit
+	existingActivity.FinishedAmount = activity.FinishedAmount
 	existingActivity.UpdateProtocol = activity.UpdateProtocol
-	existingActivity.SchoolYear = activity.SchoolYear
-	existingActivity.Semester = activity.Semester
 
 	// Handle InactiveDate logic
 	if !existingActivity.IsActive && existingActivity.InactiveDate == nil {

@@ -25,31 +25,43 @@ func NewActivityController(activityService *services.ActivityService) *ActivityC
 	}
 }
 
-// CreateActivityRequest defines the request body for creating an activity.
+// CreateActivityRequest defines the request body for creating a new activity.
 type CreateActivityRequest struct {
-	Name              string                  `json:"activity_name" binding:"required" example:"Tree Planting Event"`
-	Template          models.ActivityTemplate `json:"template" binding:"required"` // Can use map[string]interface{} or models.ActivityTemplate
-	CoverageType      string                  `json:"coverage_type" binding:"required,oneof=REQUIRE CUSTOM" example:"CUSTOM"`
-	CustomStudentIDs  []uint                  `json:"custom_student_ids,omitempty"` // IDs of students, not full User objects
-	FinishedCondition string                  `json:"finished_condition" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	Status            string                  `json:"status" binding:"required,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
-	UpdateProtocol    string                  `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
-	SchoolYear        int                     `json:"school_year" binding:"required,gt=0" example:"2568"`
-	Semester          int                     `json:"semester" binding:"required,gt=0" example:"1"`
+	Name string `json:"activity_name" binding:"required" example:"School Cleanup Drive"`
+
+	Template models.ActivityTemplate `json:"template" binding:"required" swaggerignore:"true"`
+
+	IsRequired   bool   `json:"is_required" binding:"required" example:"true"`
+	CoverageType string `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
+
+	// SchoolID is the ID of the school this activity belongs to.
+	// This might be derived from the authenticated user's school ID, or explicitly provided.
+	SchoolID uint `json:"school_id" binding:"required,gt=0" example:"1"`
+
+	// ExclusiveClassrooms: List of composite keys for classrooms.
+	// Required if CoverageType is "JUNIOR" or "SENIOR" and IsRequired is false.
+	ExclusiveClassrooms []string `json:"exclusive_classrooms,omitempty"`
+
+	// ExclusiveStudentIDs: List of User IDs for specific students.
+	// Required if CoverageType is "CUSTOM" (if you add CUSTOM back) or for specific use cases.
+	ExclusiveStudentIDs []uint `json:"exclusive_student_ids,omitempty" example:"101"`
+
+	FinishedUnit   string `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
+	FinishedAmount int    `json:"finished_amount" binding:"required,gt=0" example:"10"` // Must be positive
+
+	UpdateProtocol string `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }
 
 // UpdateActivityRequest defines the request body for updating an activity.
 type UpdateActivityRequest struct {
-	Name              string                  `json:"activity_name,omitempty" binding:"omitempty" example:"School Cleanup"`
-	Template          models.ActivityTemplate `json:"template,omitempty"` // Can use map[string]interface{} or models.ActivityTemplate
-	CoverageType      string                  `json:"coverage_type,omitempty" binding:"omitempty,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
-	CustomStudentIDs  []uint                  `json:"custom_student_ids,omitempty" ` // Provide empty array to clear
-	IsActive          *bool                   `json:"is_active,omitempty" example:"true"`
-	FinishedCondition string                  `json:"finished_condition,omitempty" binding:"omitempty,oneof=TIMES HOURS" example:"TIMES"`
-	Status            string                  `json:"status,omitempty" binding:"omitempty,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
-	UpdateProtocol    string                  `json:"update_protocol,omitempty" binding:"omitempty,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"IGNORE_PAST_RECORDS"`
-	SchoolYear        int                     `json:"school_year,omitempty" binding:"omitempty,gt=0" example:"2569"`
-	Semester          int                     `json:"semester,omitempty" binding:"omitempty,gt=0" example:"2"`
+	Name             string                  `json:"activity_name,omitempty" binding:"omitempty" example:"School Cleanup"`
+	Template         models.ActivityTemplate `json:"template,omitempty"` // Can use map[string]interface{} or models.ActivityTemplate
+	CoverageType     string                  `json:"coverage_type,omitempty" binding:"omitempty,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
+	CustomStudentIDs []uint                  `json:"custom_student_ids,omitempty" ` // Provide empty array to clear
+	IsActive         *bool                   `json:"is_active,omitempty" example:"true"`
+	FinishedUnit     string                  `json:"finished_condition" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
+	FinishedAmount   int                     `json:"finished_amount"`
+	UpdateProtocol   string                  `json:"update_protocol,omitempty" binding:"omitempty,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"IGNORE_PAST_RECORDS"`
 }
 
 // CreateActivity handles creating a new activity.
@@ -86,32 +98,31 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 	}
 
 	activity := &models.Activity{
-		Name:              req.Name,
-		Template:          req.Template,
-		CoverageType:      req.CoverageType,
-		FinishedCondition: req.FinishedCondition,
-		Status:            req.Status,
-		UpdateProtocol:    req.UpdateProtocol,
-		SchoolYear:        req.SchoolYear,
-		Semester:          req.Semester,
-		OwnerID:           claims.UserID, // Set owner from authenticated user
-		IsActive:          true,          // Default to active on creation
+		Name:           req.Name,
+		Template:       req.Template,
+		IsRequired:     req.IsRequired,
+		CoverageType:   req.CoverageType,
+		FinishedUnit:   req.FinishedUnit,
+		FinishedAmount: req.FinishedAmount,
+		UpdateProtocol: req.UpdateProtocol,
+		OwnerID:        claims.UserID, // Set owner from authenticated user
+		IsActive:       true,          // Default to active on creation
 	}
 
 	// Prepare CustomStudentIDs for the service.
 	// We need to convert []uint to []models.User with only ID populated for GORM association.
-	if req.CoverageType == "CUSTOM" {
-		if len(req.CustomStudentIDs) == 0 {
-			ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "CustomStudentIDs must not be empty when CoverageType is CUSTOM"})
-			return
-		}
-		// for _, studentID := range req.CustomStudentIDs {
-		// 	activity.CustomStudentIDs = append(activity.CustomStudentIDs, models.User{ID: studentID})
-		// }
-	} else {
-		// Ensure CustomStudentIDs is empty if CoverageType is not CUSTOM
-		activity.CustomStudentIDs = nil
-	}
+	// if req.CoverageType == "CUSTOM" {
+	// 	if len(req.CustomStudentIDs) == 0 {
+	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "CustomStudentIDs must not be empty when CoverageType is CUSTOM"})
+	// 		return
+	// 	}
+	// 	// for _, studentID := range req.CustomStudentIDs {
+	// 	// 	activity.CustomStudentIDs = append(activity.CustomStudentIDs, models.User{ID: studentID})
+	// 	// }
+	// } else {
+	// 	// Ensure CustomStudentIDs is empty if CoverageType is not CUSTOM
+	// 	//activity.CustomStudentIDs = nil
+	// }
 
 	if err := c.activityService.CreateActivity(activity); err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to create activity: " + err.Error()})
@@ -176,19 +187,19 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 		// }
 		// If the activity is CUSTOM coverage, and the current user is a CustomStudent, they can view it.
 		// This requires checking if claims.UserID is in activity.CustomStudentIDs.
-		if activity.CoverageType == "CUSTOM" {
-			isCustomStudent := false
-			for _, student := range activity.CustomStudentIDs {
-				if student.ID == claims.UserID {
-					isCustomStudent = true
-					break
-				}
-			}
-			if !isCustomStudent {
-				ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to view this activity."})
-				return
-			}
-		}
+		// if activity.CoverageType == "CUSTOM" {
+		// 	isCustomStudent := false
+		// 	for _, student := range activity.CustomStudentIDs {
+		// 		if student.ID == claims.UserID {
+		// 			isCustomStudent = true
+		// 			break
+		// 		}
+		// 	}
+		// 	if !isCustomStudent {
+		// 		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to view this activity."})
+		// 		return
+		// 	}
+		// }
 	}
 
 	ctx.JSON(http.StatusOK, activity)
@@ -343,7 +354,7 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 		// 	activityToUpdate.CustomStudentIDs = nil
 		// }
 	} else { // if CustomStudentIDs is not provided in the request, retain existing
-		activityToUpdate.CustomStudentIDs = existingActivity.CustomStudentIDs
+		// activityToUpdate.CustomStudentIDs = existingActivity.CustomStudentIDs
 	}
 
 	if req.IsActive != nil {
@@ -351,30 +362,15 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 	} else {
 		activityToUpdate.IsActive = existingActivity.IsActive
 	}
-	if req.FinishedCondition != "" {
-		activityToUpdate.FinishedCondition = req.FinishedCondition
+	if req.FinishedUnit != "" {
+		activityToUpdate.FinishedUnit = req.FinishedUnit
 	} else {
-		activityToUpdate.FinishedCondition = existingActivity.FinishedCondition
-	}
-	if req.Status != "" {
-		activityToUpdate.Status = req.Status
-	} else {
-		activityToUpdate.Status = existingActivity.Status
+		activityToUpdate.FinishedUnit = existingActivity.FinishedUnit
 	}
 	if req.UpdateProtocol != "" {
 		activityToUpdate.UpdateProtocol = req.UpdateProtocol
 	} else {
 		activityToUpdate.UpdateProtocol = existingActivity.UpdateProtocol
-	}
-	if req.SchoolYear != 0 {
-		activityToUpdate.SchoolYear = req.SchoolYear
-	} else {
-		activityToUpdate.SchoolYear = existingActivity.SchoolYear
-	}
-	if req.Semester != 0 {
-		activityToUpdate.Semester = req.Semester
-	} else {
-		activityToUpdate.Semester = existingActivity.Semester
 	}
 
 	// OwnerID and Timestamps are usually not updated via public API
