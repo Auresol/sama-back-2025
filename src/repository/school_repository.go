@@ -21,15 +21,37 @@ func NewSchoolRepository() *SchoolRepository {
 	}
 }
 
-// CreateSchool creates a new school record in the database.
-func (r *SchoolRepository) CreateSchool(school *models.School) error {
-	return r.db.Create(school).Error
+// CreateSchool creates a new school record and its associated classrooms in a transaction.
+func (r *SchoolRepository) CreateSchool(school *models.School, classrooms []string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Create the School
+		if err := tx.Create(school).Error; err != nil {
+			return fmt.Errorf("failed to create school: %w", err)
+		}
+
+		// 2. Create associated Classrooms
+		for _, name := range classrooms {
+			classroom := &models.Classroom{
+				SchoolID:  school.ID, // Assign the ID of the newly created school
+				Classroom: name,      // Use the classroom string from the request
+			}
+			if err := tx.Create(classroom).Error; err != nil {
+				// If a classroom fails to create (e.g., duplicate name for this school),
+				// the transaction will be rolled back.
+				return fmt.Errorf("failed to create classroom '%s' for school ID %d: %w", name, school.ID, err)
+			}
+		}
+
+		return nil // Return nil to commit the transaction
+	})
 }
 
 // GetSchoolByID retrieves a school by its primary ID.
 func (r *SchoolRepository) GetSchoolByID(id uint) (*models.School, error) {
 	var school models.School
-	err := r.db.First(&school, id).Error
+	err := r.db.Preload("ClassroomList").First(&school, id).Error
+	flatternClassroom(&school)
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("school with ID %d not found", id)
@@ -68,7 +90,12 @@ func (r *SchoolRepository) GetSchoolByShortName(shortName string) (*models.Schoo
 // GetAllSchools retrieves all schools with pagination.
 func (r *SchoolRepository) GetAllSchools(limit, offset int) ([]models.School, error) {
 	var schools []models.School
-	err := r.db.Limit(limit).Offset(offset).Find(&schools).Error
+	err := r.db.Limit(limit).Offset(offset).Preload("ClassroomList").Find(&schools).Error
+	for i, school := range schools {
+		flatternClassroom(&school)
+		schools[i] = school
+	}
+
 	return schools, err
 }
 
@@ -95,4 +122,10 @@ func (r *SchoolRepository) CountSchools() (int64, error) {
 	var count int64
 	err := r.db.Model(&models.School{}).Count(&count).Error
 	return count, err
+}
+
+func flatternClassroom(school *models.School) {
+	for _, obj := range school.ClassroomList {
+		school.Classrooms = append(school.Classrooms, obj.Classroom)
+	}
 }

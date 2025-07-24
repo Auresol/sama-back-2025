@@ -51,7 +51,6 @@ func SetupRoutes() *gin.Engine {
 
 		publicRoutes.POST("/schools", schoolController.CreateSchool)
 		publicRoutes.GET("/schools", schoolController.GetAllSchools)
-		publicRoutes.GET("/schools/:id", schoolController.GetSchoolByID)
 		publicRoutes.PUT("/schools/:id", schoolController.UpdateSchool)
 		publicRoutes.DELETE("/schools/:id", schoolController.DeleteSchool)
 	}
@@ -78,6 +77,8 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.GET("/activities/:id", activityController.GetActivityByID)
 		authRoutes.PUT("/activities/:id", activityController.UpdateActivity)
 		authRoutes.DELETE("/activities/:id", activityController.DeleteActivity)
+
+		authRoutes.GET("/schools/:id", schoolController.GetSchoolByID)
 	}
 
 	return router

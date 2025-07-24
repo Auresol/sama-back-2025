@@ -8,25 +8,25 @@ import (
 type User struct {
 	ID uint `gorm:"primarykey"`
 
-	UserID   string `json:"user_id,omitempty" gorm:"column:user_id;uniqueIndex"` // Unique index for user_id
-	Role     string `json:"role,omitempty" gorm:"column:role" validate:"required,oneof=STD TCH ADMIN SAMA"`
-	Email    string `json:"email,omitempty" gorm:"column:email;uniqueIndex" validate:"required,email"` // Unique index for email
-	Password string `json:"-" gorm:"column:password"`
+	UserID   string `json:"user_id,omitempty" gorm:"uniqueIndex"` // Unique index for user_id
+	Role     string `json:"role,omitempty" validate:"required,oneof=STD TCH ADMIN SAMA"`
+	Email    string `json:"email,omitempty" gorm:"uniqueIndex" validate:"required,email"` // Unique index for email
+	Password string `json:"-"`
 
-	Phone             string  `json:"phone,omitempty" gorm:"column:phone"`
-	Firstname         string  `json:"firstname,omitempty" gorm:"column:firstname" validate:"required"`
-	Lastname          string  `json:"lastname,omitempty" gorm:"column:lastname" validate:"required"`
-	ProfilePictureURL *string `json:"profile_picture_url,omitempty" gorm:"column:profile_picture_url"`
-	IsVerified        bool    `json:"-" gorm:"column:is_verified"`
-	IsActive          bool    `json:"is_active,omitempty" gorm:"column:is_active"`
+	Phone             string  `json:"phone,omitempty"`
+	Firstname         string  `json:"firstname,omitempty" validate:"required"`
+	Lastname          string  `json:"lastname,omitempty" validate:"required"`
+	ProfilePictureURL *string `json:"profile_picture_url,omitempty"`
+	IsVerified        bool    `json:"-"`
+	IsActive          bool    `json:"is_active,omitempty"`
 
 	// CustomActivities []*Activity `json:"custom_activities,omitempty" gorm:"column:custom_activities;many2many:activity_custom_student_ids"`
 
-	SchoolID  uint   `json:"school_id,omitempty" gorm:"column:school_id" validate:"required"`
-	Classroom string `json:"classroom_id,omitempty" gorm:"column:classroom_id"`
-	Number    uint   `json:"number,omitempty" gorm:"column:number" validate:"required,number"`
-	Status    string `json:"status,omitempty" gorm:"column:status"`
-	Language  string `json:"language,omitempty" gorm:"column:language"`
+	SchoolID  uint   `json:"school_id,omitempty" validate:"required"`
+	Classroom string `json:"classroom_id,omitempty"`
+	Number    uint   `json:"number,omitempty" validate:"required,number"`
+	Status    string `json:"status,omitempty"`
+	Language  string `json:"language,omitempty"`
 
 	School School `json:"school" gorm:"foreignKey:SchoolID"`
 

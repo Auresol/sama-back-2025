@@ -26,26 +26,28 @@ func NewSchoolController(schoolService *services.SchoolService) *SchoolControlle
 
 // CreateSchoolRequest represents the request body for creating a new school.
 type CreateSchoolRequest struct {
-	ThaiName    string `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยา"`
-	EnglishName string `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
-	ShortName   string `json:"short_name" binding:"required" example:"SMK"`
-	Email       string `json:"email" binding:"required,email" example:"info@smk.ac.th"`
-	Location    string `json:"location" binding:"required" example:"Bangkok, Thailand"`
-	Phone       string `json:"phone" binding:"required,e164" example:"+66812345678"`
-	SchoolYear  int    `json:"school_year" binding:"required,gt=0" example:"2568"`
-	Semester    int    `json:"semester" binding:"required,gt=0" example:"1"`
+	ThaiName    string   `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยา"`
+	EnglishName string   `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
+	ShortName   string   `json:"short_name" binding:"required" example:"SMK"`
+	Email       string   `json:"email" binding:"required,email" example:"info@smk.ac.th"`
+	Location    string   `json:"location" binding:"required" example:"Bangkok, Thailand"`
+	Phone       string   `json:"phone" binding:"required,e164" example:"+66812345678"`
+	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1"`
+	SchoolYear  int      `json:"school_year" binding:"required,gt=0" example:"2568"`
+	Semester    int      `json:"semester" binding:"required,gt=0" example:"1"`
 }
 
 // UpdateSchoolRequest represents the request body for updating an existing school.
 type UpdateSchoolRequest struct {
-	ThaiName    string `json:"thai_name,omitempty" binding:"omitempty" example:"โรงเรียนสามัคคีวิทยาใหม่"`
-	EnglishName string `json:"english_name,omitempty" binding:"omitempty" example:"New Samakkee Wittaya School"`
-	ShortName   string `json:"short_name,omitempty" binding:"omitempty" example:"NSMK"`
-	Email       string `json:"email,omitempty" binding:"omitempty,email" example:"new_info@smk.ac.th"`
-	Location    string `json:"location,omitempty" binding:"omitempty" example:"Nonthaburi, Thailand"`
-	Phone       string `json:"phone,omitempty" binding:"omitempty,e164" example:"+66923456789"`
-	SchoolYear  int    `json:"school_year,omitempty" binding:"omitempty,gt=0" example:"2569"`
-	Semester    int    `json:"semester,omitempty" binding:"omitempty,gt=0" example:"2"`
+	ThaiName    string   `json:"thai_name,omitempty" binding:"omitempty" example:"โรงเรียนสามัคคีวิทยาใหม่"`
+	EnglishName string   `json:"english_name,omitempty" binding:"omitempty" example:"New Samakkee Wittaya School"`
+	ShortName   string   `json:"short_name,omitempty" binding:"omitempty" example:"NSMK"`
+	Email       string   `json:"email,omitempty" binding:"omitempty,email" example:"new_info@smk.ac.th"`
+	Location    string   `json:"location,omitempty" binding:"omitempty" example:"Nonthaburi, Thailand"`
+	Phone       string   `json:"phone,omitempty" binding:"omitempty,e164" example:"+66923456789"`
+	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1"`
+	SchoolYear  int      `json:"school_year,omitempty" binding:"omitempty,gt=0" example:"2569"`
+	Semester    int      `json:"semester,omitempty" binding:"omitempty,gt=0" example:"2"`
 }
 
 // CreateSchool handles the creation of a new school.
@@ -81,6 +83,11 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 		return
 	}
 
+	if len(req.Classrooms) == 0 {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Please specify at least one classroom"})
+		return
+	}
+
 	school := &models.School{
 		ThaiName:    req.ThaiName,
 		EnglishName: req.EnglishName,
@@ -92,11 +99,11 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 		Semester:    req.Semester,
 	}
 
-	if err := h.schoolService.CreateSchool(school); err != nil {
-		if err.Error() == "school with this email already exists" || err.Error() == "school with this short name already exists" {
-			c.JSON(http.StatusConflict, ErrorResponse{Message: err.Error()})
-			return
-		}
+	if err := h.schoolService.CreateSchool(school, req.Classrooms); err != nil {
+		// if err.Error() == "school with this email already exists" || err.Error() == "school with this short name already exists" {
+		// 	c.JSON(http.StatusConflict, ErrorResponse{Message: err.Error()})
+		// 	return
+		// }
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to create school: " + err.Error()})
 		return
 	}
@@ -134,7 +141,7 @@ func (h *SchoolController) GetSchoolByID(c *gin.Context) {
 	// Authorization:
 	// SAMA_CREW can access any school.
 	// ADMIN/TCH/STD can access their own school's data.
-	if claims.Role != "SAMA_CREW" && claims.SchoolID != uint(id) {
+	if !(claims.Role != "SAMA_CREW" && claims.SchoolID != uint(id)) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to access this school's data"})
 		return
 	}

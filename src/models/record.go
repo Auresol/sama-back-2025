@@ -3,7 +3,6 @@ package models
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 )
@@ -12,24 +11,21 @@ import (
 type Record struct {
 	ID uint `gorm:"primarykey"`
 
-	ActivityTypeID string `json:"activity_type_id,omitempty" gorm:"column:activity_type_id" validate:"required"`
-	ActivityName   string `json:"activity_name,omitempty" gorm:"column:activity_name" validate:"required"`
-	// Data stores flexible, semi-structured data for the record as JSONB.
-	RecordData RecordDataMap `json:"data,omitempty" gorm:"column:data;type:jsonb"`
-	Advise     string        `json:"advise,omitempty" gorm:"column:advise"` // Advise might be optional
+	ActivityTypeID string                 `json:"activity_type_id,omitempty" validate:"required"`
+	ActivityName   string                 `json:"activity_name,omitempty" validate:"required"`
+	Data           map[string]interface{} `json:"data" gorm:"serializer:json"`
+	Advise         string                 `json:"advise,omitempty"` // Advise might be optional
 
 	// Foreign keys to other models
-	SchoolID  uint `json:"school_id,omitempty" gorm:"column:school_id;index" validate:"required,gt=0"`   // Index for faster lookups
-	StudentID uint `json:"student_id,omitempty" gorm:"column:student_id;index" validate:"required,gt=0"` // Index for faster lookups
-	TeacherID uint `json:"teacher_id,omitempty" gorm:"column:teacher_id;index" validate:"required,gt=0"` // Index for faster lookups
+	SchoolID  uint `json:"school_id,omitempty" gorm:"index" validate:"required,gt=0"`  // Index for faster lookups
+	StudentID uint `json:"student_id,omitempty" gorm:"index" validate:"required,gt=0"` // Index for faster lookups
+	TeacherID uint `json:"teacher_id,omitempty" gorm:"index" validate:"required,gt=0"` // Index for faster lookups
 
-	SchoolYear int `json:"school_year,omitempty" gorm:"column:school_year" validate:"required,gt=0"`
-	Semester   int `json:"semester,omitempty" gorm:"column:semester" validate:"required,gt=0"`
+	SchoolYear int `json:"school_year,omitempty" validate:"required,gt=0"`
+	Semester   int `json:"semester,omitempty" validate:"required,gt=0"`
 
-	// StatusUpdates stores a history of status changes as a JSONB array of objects.
-	StatusUpdates StatusUpdates `json:"status_list,omitempty" gorm:"column:status_list;type:jsonb"`
-	// Current status of the record, validated against a predefined enum.
-	Status string `json:"status,omitempty" gorm:"column:status" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
+	StatusUpdates StatusUpdates `json:"status_list,omitempty" gorm:"type:jsonb"`
+	Status        string        `json:"status,omitempty" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -71,7 +67,7 @@ func (s *StatusUpdates) Scan(value interface{}) error {
 	case string:
 		jsonBytes = []byte(v)
 	default:
-		return errors.New(fmt.Sprintf("unsupported type for StatusUpdates: %T", value))
+		return fmt.Errorf("unsupported type for StatusUpdates: %T", value)
 	}
 
 	if len(jsonBytes) == 0 {
@@ -120,7 +116,7 @@ func (r *RecordDataMap) Scan(value interface{}) error {
 	case string:
 		jsonBytes = []byte(v)
 	default:
-		return errors.New(fmt.Sprintf("unsupported type for RecordDataMap: %T", value))
+		return fmt.Errorf("unsupported type for RecordDataMap: %T", value)
 	}
 
 	if len(jsonBytes) == 0 {

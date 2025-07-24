@@ -27,7 +27,7 @@ func NewSchoolService() *SchoolService {
 }
 
 // CreateSchool creates a new school after validation and uniqueness checks.
-func (s *SchoolService) CreateSchool(school *models.School) error {
+func (s *SchoolService) CreateSchool(school *models.School, classrooms []string) error {
 	// Validate input school data
 	if err := s.validator.Struct(school); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
@@ -52,7 +52,7 @@ func (s *SchoolService) CreateSchool(school *models.School) error {
 	// }
 
 	// Create the school
-	return s.schoolRepo.CreateSchool(school)
+	return s.schoolRepo.CreateSchool(school, classrooms)
 }
 
 // GetSchoolByID retrieves a school by its ID.

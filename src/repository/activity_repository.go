@@ -72,7 +72,7 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) 
 // This method can be expanded for more complex filtering.
 func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, schoolYear, semester, limit, offset int) ([]models.Activity, error) {
 	var activities []models.Activity
-	query := r.db.Model(&models.Activity{}).Preload("CustomStudentIDs") // Always preload students
+	query := r.db.Model(&models.Activity{}) // Always preload students
 
 	if ownerID != 0 {
 		query = query.Where("owner_id = ?", ownerID)

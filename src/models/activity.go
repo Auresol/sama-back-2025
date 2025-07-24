@@ -11,30 +11,25 @@ import (
 type Activity struct {
 	ID uint `gorm:"primarykey"`
 
-	Name string `json:"activity_name,omitempty" gorm:"column:activity_name" validate:"required"`
+	SchoolID uint   `json:"school_id,omitempty"`
+	Name     string `json:"activity_name,omitempty" validate:"required"`
 
-	// Template defines the structure of data this activity should contain (JSON).
-	// Example: {"fields": [{"name": "answer", "type": "SHORT_ANS"}, {"name": "date", "type": "DATE"}]}
-	Template map[string]interface{} `json:"template" gorm:"column:template;serializer:json"`
+	Template map[string]interface{} `json:"template" gorm:"serializer:json"`
 
-	IsRequired   bool   `json:"is_required,omitempty" gorm:"column:is_required" validate:"required"`
-	CoverageType string `json:"coverage_type,omitempty" gorm:"column:coverage_type" validate:"required,oneof=ALL JUNIOR SENIOR"`
+	IsRequired   bool   `json:"is_required,omitempty" validate:"required"`
+	CoverageType string `json:"coverage_type,omitempty" validate:"required,oneof=ALL JUNIOR SENIOR"`
 
-	SchoolID            uint         `json:"school_id,omitempty" gorm:"column:school_id"`
 	ExclusiveClassrooms []*Classroom `json:"exclusive_classroom,omitempty" gorm:"many2many:activity_exclusive_classroom"`
 	ExclusiveStudentIDs []*User      `json:"exclusive_student_ids,omitempty" gorm:"many2many:activity_exclusive_student_ids"`
 
-	OwnerID uint `json:"owner_id,omitempty" gorm:"column:owner_id;index" validate:"required,gt=0"` // ID of the creator (User)
+	OwnerID uint `json:"owner_id,omitempty" gorm:"index" validate:"required,gt=0"` // ID of the creator (User)
 
-	IsActive     bool       `json:"is_active" gorm:"column:is_active"`                   // Still able to create new records
-	InactiveDate *time.Time `json:"inactive_date,omitempty" gorm:"column:inactive_date"` // The date when activity is closed (nullable)
+	IsActive     bool       `json:"is_active"`               // Still able to create new records
+	InactiveDate *time.Time `json:"inactive_date,omitempty"` // The date when activity is closed (nullable)
 
-	FinishedUnit   string `json:"finished_condition" gorm:"column:finished_condition" validate:"required,oneof=TIMES HOURS"`
-	FinishedAmount int
-
-	// UpdateProtocol defines how records are handled when the activity is updated.
-	// Validated against ACTIVITY_UPDATE_PROTOCOL_ENUM.
-	UpdateProtocol string `json:"update_protocol,omitempty" gorm:"column:update_protocol" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
+	FinishedUnit   string `json:"finished_condition" validate:"required,oneof=TIMES HOURS"`
+	FinishedAmount int    `json:"finished_amount"`
+	UpdateProtocol string `json:"update_protocol,omitempty" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

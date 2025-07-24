@@ -40,7 +40,7 @@ type CreateActivityRequest struct {
 
 	// ExclusiveClassrooms: List of composite keys for classrooms.
 	// Required if CoverageType is "JUNIOR" or "SENIOR" and IsRequired is false.
-	ExclusiveClassrooms []string `json:"exclusive_classrooms,omitempty"`
+	ExclusiveClassrooms []string `json:"exclusive_classrooms,omitempty" example:"1/1"`
 
 	// ExclusiveStudentIDs: List of User IDs for specific students.
 	// Required if CoverageType is "CUSTOM" (if you add CUSTOM back) or for specific use cases.
