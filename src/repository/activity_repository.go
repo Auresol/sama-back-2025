@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"sama/sama-backend-2025/src/models"
+	"sama/sama-backend-2025/src/utils"
 )
 
 // ActivityRepository handles database operations for the Activity model.
@@ -26,30 +27,31 @@ func NewActivityRepository() *ActivityRepository {
 func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// Create the activity first
-		if err := tx.Create(activity).Error; err != nil {
-			return fmt.Errorf("failed to create activity: %w", err)
-		}
+		// if err := tx.Create(activity).Error; err != nil {
+		// 	return fmt.Errorf("failed to create activity: %w", err)
+		// }
 
-		// Handle many-to-many relationship for CustomStudentIDs
-		// GORM will automatically save associations if activity.CustomStudentIDs contains valid User models
-		// and the association table is set up correctly.
-		// If activity.CustomStudentIDs only contains IDs, you might need to fetch User objects first.
-		// if activity.CoverageType == "CUSTOM" && len(activity.CustomStudentIDs) > 0 {
-		// 	// Ensure that the CustomStudentIDs are correctly associated.
-		// 	// This typically means activity.CustomStudentIDs contains *actual* User models loaded from DB,
-		// 	// or at least User models with only their ID set.
-		// 	// GORM's Create should handle this if the IDs are valid.
-		// 	// If not, explicit association might be needed:
-		// 	// for _, student := range activity.CustomStudentIDs {
-		// 	// 	if err := tx.Model(activity).Association("CustomStudentIDs").Append(&student); err != nil {
-		// 	// 		return fmt.Errorf("failed to append custom student ID: %w", err)
-		// 	// 	}
-		// 	// }
+		// 2. Create associated Classrooms
+		activity.ExclusiveClassroomList = r.classroomTransform(
+			activity.ExclusiveClassrooms,
+			activity.SchoolID,
+		)
+
+		activity.ExclusiveStudentIDList = r.userTransform(
+			activity.ExclusiveStudentIDs,
+		)
+
+		// for _, student := range activity.ExclusiveStudentIDs {
+		// 	if err := tx.Model(activity).Association("CustomStudentIDs").Append(&student); err != nil {
+		// 		return fmt.Errorf("failed to append custom student ID: %w", err)
+		// 	}
 		// }
 
 		// for _, classroom := range *exclusiveClassrooms {
 		// 	tx.Model(activity).Association("ExclusiveClassrooms").Append()
 		// }
+
+		r.db.Omit("ExclusiveClassroomList.*").Omit("ExclusiveStudentIDList.*").Create(activity)
 
 		return nil
 	})
@@ -160,4 +162,34 @@ func (r *ActivityRepository) CountActivities(ownerID, schoolID uint, schoolYear,
 
 	err := query.Count(&count).Error
 	return count, err
+}
+
+func (r *ActivityRepository) classroomTransform(classroomList []string, schoolID uint) []*models.Classroom {
+
+	classrooms := make([]*models.Classroom, len(classroomList))
+
+	for i, name := range classroomList {
+		class, room := utils.ClassroomSplit(name)
+
+		classrooms[i] = &models.Classroom{
+			SchoolID: schoolID,
+			Class:    uint(class),
+			Room:     uint(room),
+		}
+	}
+
+	return classrooms
+}
+
+func (r *ActivityRepository) userTransform(userList []uint) []*models.User {
+
+	users := make([]*models.User, len(userList))
+
+	for i, id := range userList {
+		users[i] = &models.User{
+			ID: id,
+		}
+	}
+
+	return users
 }

@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // School represents a school entity, mapped to a PostgreSQL table.
@@ -29,4 +31,15 @@ type School struct {
 // GORM by default pluralizes struct names, but explicit naming is good practice.
 func (School) TableName() string {
 	return "schools"
+}
+
+// AfterFind is a GORM callback that runs after a record is found.
+// It populates the `Classrooms []string` field from the `ClassroomList` association.
+func (s *School) AfterFind(tx *gorm.DB) (err error) {
+	// Ensure ClassroomList is loaded before attempting to flatten
+	// This requires preloading ClassroomList in your repository's Get methods.
+	for _, obj := range s.ClassroomList {
+		s.Classrooms = append(s.Classrooms, obj.Classroom)
+	}
+	return nil
 }

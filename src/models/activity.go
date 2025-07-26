@@ -1,10 +1,9 @@
 package models
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Activity represents a type of activity students perform, mapped to a PostgreSQL table.
@@ -19,8 +18,11 @@ type Activity struct {
 	IsRequired   bool   `json:"is_required,omitempty" validate:"required"`
 	CoverageType string `json:"coverage_type,omitempty" validate:"required,oneof=ALL JUNIOR SENIOR"`
 
-	ExclusiveClassrooms []*Classroom `json:"exclusive_classroom,omitempty" gorm:"many2many:activity_exclusive_classroom"`
-	ExclusiveStudentIDs []*User      `json:"exclusive_student_ids,omitempty" gorm:"many2many:activity_exclusive_student_ids"`
+	ExclusiveClassrooms    []string     `json:"exclusive_classroom,omitempty" gorm:"-:all"`
+	ExclusiveClassroomList []*Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
+
+	ExclusiveStudentIDs    []uint  `json:"exclusive_student_ids,omitempty" gorm:"-:all"`
+	ExclusiveStudentIDList []*User `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 
 	OwnerID uint `json:"owner_id,omitempty" gorm:"index" validate:"required,gt=0"` // ID of the creator (User)
 
@@ -36,58 +38,20 @@ type Activity struct {
 	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
 }
 
-// ActivityTemplate is a custom type for handling map[string]interface{} as JSONB,
-// specifically for the activity's template definition.
-type ActivityTemplate map[string]interface{}
-
-// Value implements the driver.Valuer interface for ActivityTemplate.
-func (a ActivityTemplate) Value() (driver.Value, error) {
-	if a == nil {
-		return nil, nil
-	}
-	jsonBytes, err := json.Marshal(a)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal ActivityTemplate to JSON: %w", err)
-	}
-	return jsonBytes, nil
-}
-
-// Scan implements the sql.Scanner interface for ActivityTemplate.
-func (a *ActivityTemplate) Scan(value interface{}) error {
-	if value == nil {
-		*a = make(ActivityTemplate)
-		return nil
-	}
-
-	var jsonBytes []byte
-	switch v := value.(type) {
-	case []byte:
-		jsonBytes = v
-	case string:
-		jsonBytes = []byte(v)
-	default:
-		return fmt.Errorf("unsupported type for ActivityTemplate: %T", value)
-	}
-
-	if len(jsonBytes) == 0 {
-		*a = make(ActivityTemplate)
-		return nil
-	}
-
-	if *a == nil {
-		*a = make(ActivityTemplate)
-	}
-
-	err := json.Unmarshal(jsonBytes, a)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal JSON to ActivityTemplate: %w", err)
-	}
-	return nil
-}
-
 // TableName specifies the table name for the Activity model.
 func (Activity) TableName() string {
 	return "activities"
+}
+
+// AfterFind is a GORM callback that runs after a record is found.
+// It populates the `Classrooms []string` field from the `ClassroomList` association.
+func (a *Activity) AfterFind(tx *gorm.DB) (err error) {
+	// Ensure ClassroomList is loaded before attempting to flatten
+	// This requires preloading ClassroomList in your repository's Get methods.
+	for _, obj := range a.ExclusiveClassroomList {
+		a.ExclusiveClassrooms = append(a.ExclusiveClassrooms, obj.Classroom)
+	}
+	return nil
 }
 
 var ACTIVITY_COVERAGE_TYPE = []string{"ALL", "JUNIOR", "SENIOR"}

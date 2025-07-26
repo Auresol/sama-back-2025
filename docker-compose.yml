@@ -87,9 +87,29 @@ services:
   #   # security_opt:
   #   #   - no-new-privileges=true
 
+  pgadmin:
+    image: dpage/pgadmin4:latest # Use the latest official pgAdmin 4 image
+    container_name: pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: root@gmail.com     # Your desired pgAdmin login email
+      PGADMIN_DEFAULT_PASSWORD: root # Your desired pgAdmin login password
+      # PGADMIN_LISTEN_PORT: 80 # Default is 80, can change if needed
+      # PGADMIN_CONFIG_SERVER_MODE: "False" # Set to True to disable the login screen (not recommended for production)
+      # PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False" # Required if PGADMIN_CONFIG_SERVER_MODE is False
+      # PGADMIN_CONFIG_SESSION_EXPIRATION_TIME: 1440 # Session expiration time in minutes (default is 1440, 24 hours)
+      # PGADMIN_CONFIG_MAX_SESSION_IDLE_TIME: 60 # Maximum session idle time in minutes (default is 60)
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin # Persist pgAdmin configuration and user data
+    ports:
+      - "5050:80" # Map host port 5050 to container port 80 (where pgAdmin runs)
+    # depends_on: # Uncomment if you're using the 'db' service above
+    #   db:
+    #     condition: service_healthy
+
 volumes:
   postgres_data:
     driver: local
+  pgadmin_data:
 
 networks:
   sama-network:

@@ -10,17 +10,23 @@ import (
 	"sama/sama-backend-2025/src/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 // SchoolController manages HTTP requests for schools.
 type SchoolController struct {
 	schoolService *services.SchoolService
+	validate      *validator.Validate
 }
 
 // NewSchoolController creates a new SchoolController.
-func NewSchoolController(schoolService *services.SchoolService) *SchoolController {
+func NewSchoolController(
+	schoolService *services.SchoolService,
+	validaete *validator.Validate,
+) *SchoolController {
 	return &SchoolController{
 		schoolService: schoolService,
+		validate:      validaete,
 	}
 }
 
@@ -32,7 +38,7 @@ type CreateSchoolRequest struct {
 	Email       string   `json:"email" binding:"required,email" example:"info@smk.ac.th"`
 	Location    string   `json:"location" binding:"required" example:"Bangkok, Thailand"`
 	Phone       string   `json:"phone" binding:"required,e164" example:"+66812345678"`
-	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1"`
+	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
 	SchoolYear  int      `json:"school_year" binding:"required,gt=0" example:"2568"`
 	Semester    int      `json:"semester" binding:"required,gt=0" example:"1"`
 }
@@ -45,7 +51,7 @@ type UpdateSchoolRequest struct {
 	Email       string   `json:"email,omitempty" binding:"omitempty,email" example:"new_info@smk.ac.th"`
 	Location    string   `json:"location,omitempty" binding:"omitempty" example:"Nonthaburi, Thailand"`
 	Phone       string   `json:"phone,omitempty" binding:"omitempty,e164" example:"+66923456789"`
-	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1"`
+	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
 	SchoolYear  int      `json:"school_year,omitempty" binding:"omitempty,gt=0" example:"2569"`
 	Semester    int      `json:"semester,omitempty" binding:"omitempty,gt=0" example:"2"`
 }
@@ -83,6 +89,13 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 		return
 	}
 
+	err := h.validate.Struct(req)
+	if err != nil {
+		//fmt.Printf("Validation Error for s1: %v\n", err)
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+		return
+	}
+
 	if len(req.Classrooms) == 0 {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Please specify at least one classroom"})
 		return
@@ -95,11 +108,12 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 		Email:       req.Email,
 		Location:    req.Location,
 		Phone:       req.Phone,
+		Classrooms:  req.Classrooms,
 		SchoolYear:  req.SchoolYear,
 		Semester:    req.Semester,
 	}
 
-	if err := h.schoolService.CreateSchool(school, req.Classrooms); err != nil {
+	if err := h.schoolService.CreateSchool(school); err != nil {
 		// if err.Error() == "school with this email already exists" || err.Error() == "school with this short name already exists" {
 		// 	c.JSON(http.StatusConflict, ErrorResponse{Message: err.Error()})
 		// 	return

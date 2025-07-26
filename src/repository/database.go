@@ -50,6 +50,21 @@ func AutoMigrate() error {
 	DB.AutoMigrate(&models.User{})
 	DB.AutoMigrate(&models.School{})
 	DB.AutoMigrate(&models.Activity{})
+
+	rawSQL := `
+	ALTER TABLE classrooms
+	ADD COLUMN classroom TEXT GENERATED ALWAYS AS (room_number || '/' || room_section) STORED;
+	`
+	err := DB.Exec(rawSQL).Error
+	if err != nil {
+		// Handle error if column already exists gracefully, or ensure your migration
+		// system prevents re-running this if it's already there.
+		// if !isDuplicateColumnError(err) { // Custom check for duplicate column error
+		// 	log.Fatalf("Failed to add generated column: %v", err)
+		// }
+		log.Println("Generated column 'classroom_identifier' already exists, skipping.")
+	}
+
 	return nil
 }
 

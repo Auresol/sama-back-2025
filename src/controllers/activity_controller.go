@@ -11,17 +11,20 @@ import (
 	"sama/sama-backend-2025/src/services" // Renamed from service
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
 
 // ActivityController manages HTTP requests for activities.
 type ActivityController struct {
 	activityService *services.ActivityService
+	validate        *validator.Validate
 }
 
 // NewActivityController creates a new ActivityController.
-func NewActivityController(activityService *services.ActivityService) *ActivityController {
+func NewActivityController(activityService *services.ActivityService, validate *validator.Validate) *ActivityController {
 	return &ActivityController{
 		activityService: activityService,
+		validate:        validate,
 	}
 }
 
@@ -29,7 +32,7 @@ func NewActivityController(activityService *services.ActivityService) *ActivityC
 type CreateActivityRequest struct {
 	Name string `json:"activity_name" binding:"required" example:"School Cleanup Drive"`
 
-	Template models.ActivityTemplate `json:"template" binding:"required" swaggerignore:"true"`
+	Template map[string]interface{} `json:"template" binding:"required" swaggerignore:"true"`
 
 	IsRequired   bool   `json:"is_required" binding:"required" example:"true"`
 	CoverageType string `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
@@ -54,14 +57,14 @@ type CreateActivityRequest struct {
 
 // UpdateActivityRequest defines the request body for updating an activity.
 type UpdateActivityRequest struct {
-	Name             string                  `json:"activity_name,omitempty" binding:"omitempty" example:"School Cleanup"`
-	Template         models.ActivityTemplate `json:"template,omitempty"` // Can use map[string]interface{} or models.ActivityTemplate
-	CoverageType     string                  `json:"coverage_type,omitempty" binding:"omitempty,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
-	CustomStudentIDs []uint                  `json:"custom_student_ids,omitempty" ` // Provide empty array to clear
-	IsActive         *bool                   `json:"is_active,omitempty" example:"true"`
-	FinishedUnit     string                  `json:"finished_condition" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount   int                     `json:"finished_amount"`
-	UpdateProtocol   string                  `json:"update_protocol,omitempty" binding:"omitempty,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"IGNORE_PAST_RECORDS"`
+	Name             string                 `json:"activity_name,omitempty" binding:"omitempty" example:"School Cleanup"`
+	Template         map[string]interface{} `json:"template,omitempty"` // Can use map[string]interface{} or models.ActivityTemplate
+	CoverageType     string                 `json:"coverage_type,omitempty" binding:"omitempty,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
+	CustomStudentIDs []uint                 `json:"custom_student_ids,omitempty" ` // Provide empty array to clear
+	IsActive         *bool                  `json:"is_active,omitempty" example:"true"`
+	FinishedUnit     string                 `json:"finished_condition" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
+	FinishedAmount   int                    `json:"finished_amount"`
+	UpdateProtocol   string                 `json:"update_protocol,omitempty" binding:"omitempty,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"IGNORE_PAST_RECORDS"`
 }
 
 // CreateActivity handles creating a new activity.

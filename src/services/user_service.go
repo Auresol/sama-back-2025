@@ -22,10 +22,10 @@ type UserService struct {
 }
 
 // NewuserService creates a new instance of userService.
-func NewUserService(jwtSecret string, jwtExpMins int) *UserService {
+func NewUserService(jwtSecret string, jwtExpMins int, validate *validator.Validate) *UserService {
 	return &UserService{
 		userRepo:   repository.NewUserRepository(),
-		validator:  validator.New(),
+		validator:  validate,
 		jwtSecret:  jwtSecret,
 		jwtExpMins: jwtExpMins,
 	}

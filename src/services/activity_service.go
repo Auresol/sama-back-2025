@@ -21,11 +21,11 @@ type ActivityService struct {
 }
 
 // NewActivityService creates a new instance of ActivityService.
-func NewActivityService() *ActivityService {
+func NewActivityService(validate *validator.Validate) *ActivityService {
 	return &ActivityService{
 		activityRepo: repository.NewActivityRepository(),
 		userRepo:     repository.NewUserRepository(), // Re-using UserRepository for user validation
-		validator:    validator.New(),
+		validator:    validate,
 	}
 }
 

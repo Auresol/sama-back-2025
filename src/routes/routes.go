@@ -6,6 +6,7 @@ import (
 	"sama/sama-backend-2025/src/controllers"
 	"sama/sama-backend-2025/src/middlewares"
 	"sama/sama-backend-2025/src/services"
+	"sama/sama-backend-2025/src/utils"
 
 	_ "sama/sama-backend-2025/docs"
 
@@ -24,15 +25,17 @@ func SetupRoutes() *gin.Engine {
 	}
 	jwtExpirationMinutes := 60 // Example: Token expires in 60 minutes
 
+	validate := utils.Validate
+
 	// Initialize services
-	userService := services.NewUserService(jwtSecret, jwtExpirationMinutes)
-	schoolService := services.NewSchoolService()
-	activityService := services.NewActivityService()
+	userService := services.NewUserService(jwtSecret, jwtExpirationMinutes, validate)
+	schoolService := services.NewSchoolService(validate)
+	activityService := services.NewActivityService(validate)
 
 	// Initialize handlers
-	userController := controllers.NewUserController(userService)
-	schoolController := controllers.NewSchoolController(schoolService)
-	activityController := controllers.NewActivityController(activityService)
+	userController := controllers.NewUserController(userService, validate)
+	schoolController := controllers.NewSchoolController(schoolService, validate)
+	activityController := controllers.NewActivityController(activityService, validate)
 
 	// Swagger documentation
 	// docs.SwaggerInfo.BasePath = "/api/v1"

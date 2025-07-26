@@ -19,15 +19,15 @@ type SchoolService struct {
 }
 
 // NewSchoolService creates a new instance of SchoolService.
-func NewSchoolService() *SchoolService {
+func NewSchoolService(validate *validator.Validate) *SchoolService {
 	return &SchoolService{
 		schoolRepo: repository.NewSchoolRepository(),
-		validator:  validator.New(),
+		validator:  validate,
 	}
 }
 
 // CreateSchool creates a new school after validation and uniqueness checks.
-func (s *SchoolService) CreateSchool(school *models.School, classrooms []string) error {
+func (s *SchoolService) CreateSchool(school *models.School) error {
 	// Validate input school data
 	if err := s.validator.Struct(school); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
@@ -52,7 +52,7 @@ func (s *SchoolService) CreateSchool(school *models.School, classrooms []string)
 	// }
 
 	// Create the school
-	return s.schoolRepo.CreateSchool(school, classrooms)
+	return s.schoolRepo.CreateSchool(school)
 }
 
 // GetSchoolByID retrieves a school by its ID.

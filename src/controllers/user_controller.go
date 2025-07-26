@@ -11,18 +11,21 @@ import (
 
 	// For JWT claims
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // UserController manages HTTP requests for user accounts.
 type UserController struct {
 	userService *services.UserService
+	validate    *validator.Validate
 }
 
 // NewUserController creates a new UserController.
-func NewUserController(userService *services.UserService) *UserController {
+func NewUserController(userService *services.UserService, validate *validator.Validate) *UserController {
 	return &UserController{
 		userService: userService,
+		validate:    validate,
 	}
 }
 

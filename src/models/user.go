@@ -20,7 +20,7 @@ type User struct {
 	IsVerified        bool    `json:"-"`
 	IsActive          bool    `json:"is_active,omitempty"`
 
-	// CustomActivities []*Activity `json:"custom_activities,omitempty" gorm:"column:custom_activities;many2many:activity_custom_student_ids"`
+	Activities []*Activity `json:"activities,omitempty" gorm:"many2many:activity_exclusive_student_ids"`
 
 	SchoolID  uint   `json:"school_id,omitempty" validate:"required"`
 	Classroom string `json:"classroom_id,omitempty"`

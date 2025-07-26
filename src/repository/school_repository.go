@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	"sama/sama-backend-2025/src/models" // Adjust import path
+	"sama/sama-backend-2025/src/utils"
 )
 
 // SchoolRepository handles database operations for the School model.
@@ -22,7 +23,7 @@ func NewSchoolRepository() *SchoolRepository {
 }
 
 // CreateSchool creates a new school record and its associated classrooms in a transaction.
-func (r *SchoolRepository) CreateSchool(school *models.School, classrooms []string) error {
+func (r *SchoolRepository) CreateSchool(school *models.School) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// 1. Create the School
 		if err := tx.Create(school).Error; err != nil {
@@ -30,10 +31,14 @@ func (r *SchoolRepository) CreateSchool(school *models.School, classrooms []stri
 		}
 
 		// 2. Create associated Classrooms
-		for _, name := range classrooms {
+		for _, name := range school.Classrooms {
+
+			class, room := utils.ClassroomSplit(name)
+
 			classroom := &models.Classroom{
-				SchoolID:  school.ID, // Assign the ID of the newly created school
-				Classroom: name,      // Use the classroom string from the request
+				SchoolID: school.ID, // Assign the ID of the newly created school
+				Class:    uint(class),
+				Room:     uint(room),
 			}
 			if err := tx.Create(classroom).Error; err != nil {
 				// If a classroom fails to create (e.g., duplicate name for this school),
@@ -50,7 +55,6 @@ func (r *SchoolRepository) CreateSchool(school *models.School, classrooms []stri
 func (r *SchoolRepository) GetSchoolByID(id uint) (*models.School, error) {
 	var school models.School
 	err := r.db.Preload("ClassroomList").First(&school, id).Error
-	flatternClassroom(&school)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -91,10 +95,6 @@ func (r *SchoolRepository) GetSchoolByShortName(shortName string) (*models.Schoo
 func (r *SchoolRepository) GetAllSchools(limit, offset int) ([]models.School, error) {
 	var schools []models.School
 	err := r.db.Limit(limit).Offset(offset).Preload("ClassroomList").Find(&schools).Error
-	for i, school := range schools {
-		flatternClassroom(&school)
-		schools[i] = school
-	}
 
 	return schools, err
 }
@@ -122,10 +122,4 @@ func (r *SchoolRepository) CountSchools() (int64, error) {
 	var count int64
 	err := r.db.Model(&models.School{}).Count(&count).Error
 	return count, err
-}
-
-func flatternClassroom(school *models.School) {
-	for _, obj := range school.ClassroomList {
-		school.Classrooms = append(school.Classrooms, obj.Classroom)
-	}
 }
