@@ -11,21 +11,23 @@ import (
 type Record struct {
 	ID uint `gorm:"primarykey"`
 
-	ActivityTypeID string                 `json:"activity_type_id,omitempty" validate:"required"`
-	ActivityName   string                 `json:"activity_name,omitempty" validate:"required"`
-	Data           map[string]interface{} `json:"data" gorm:"serializer:json"`
-	Advise         string                 `json:"advise,omitempty"` // Advise might be optional
+	ActivityID uint                   `json:"activity_id,omitempty" validate:"required"`
+	Data       map[string]interface{} `json:"data" gorm:"serializer:json"`
+	Advise     string                 `json:"advise,omitempty"` // Advise might be optional
 
 	// Foreign keys to other models
-	SchoolID  uint `json:"school_id,omitempty" gorm:"index" validate:"required,gt=0"`  // Index for faster lookups
 	StudentID uint `json:"student_id,omitempty" gorm:"index" validate:"required,gt=0"` // Index for faster lookups
 	TeacherID uint `json:"teacher_id,omitempty" gorm:"index" validate:"required,gt=0"` // Index for faster lookups
 
 	SchoolYear int `json:"school_year,omitempty" validate:"required,gt=0"`
 	Semester   int `json:"semester,omitempty" validate:"required,gt=0"`
 
-	StatusUpdates StatusUpdates `json:"status_list,omitempty" gorm:"type:jsonb"`
-	Status        string        `json:"status,omitempty" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
+	Amount int `json:"amount"`
+
+	StatusLogs StatusLogs `json:"status_logs,omitempty" gorm:"type:jsonb"`
+	Status     string     `json:"status,omitempty" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
+
+	Activity Activity `json:"activity"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -33,18 +35,18 @@ type Record struct {
 }
 
 // StatusUpdateTime represents a single status update event.
-type StatusUpdateTime struct {
+type StatusHistory struct {
 	Status     string    `json:"status"`
 	UpdateTime time.Time `json:"update_time"`
 }
 
 // StatusUpdates is a custom type for handling []StatusUpdateTime as JSONB.
-type StatusUpdates []StatusUpdateTime
+type StatusLogs []StatusHistory
 
 // Value implements the driver.Valuer interface for StatusUpdates.
-func (s StatusUpdates) Value() (driver.Value, error) {
+func (s StatusLogs) Value() (driver.Value, error) {
 	if s == nil {
-		return json.Marshal([]StatusUpdateTime{}) // Return empty array for consistency
+		return json.Marshal([]StatusLogs{}) // Return empty array for consistency
 	}
 	jsonBytes, err := json.Marshal(s)
 	if err != nil {
@@ -54,9 +56,9 @@ func (s StatusUpdates) Value() (driver.Value, error) {
 }
 
 // Scan implements the sql.Scanner interface for StatusUpdates.
-func (s *StatusUpdates) Scan(value interface{}) error {
+func (s *StatusLogs) Scan(value interface{}) error {
 	if value == nil {
-		*s = make(StatusUpdates, 0) // Initialize to an empty slice if DB value is NULL
+		*s = make(StatusLogs, 0) // Initialize to an empty slice if DB value is NULL
 		return nil
 	}
 
@@ -71,67 +73,18 @@ func (s *StatusUpdates) Scan(value interface{}) error {
 	}
 
 	if len(jsonBytes) == 0 {
-		*s = make(StatusUpdates, 0) // Handle empty JSON as empty slice
+		*s = make(StatusLogs, 0) // Handle empty JSON as empty slice
 		return nil
 	}
 
 	// Ensure the slice is initialized before unmarshaling
 	if *s == nil {
-		*s = make(StatusUpdates, 0)
+		*s = make(StatusLogs, 0)
 	}
 
 	err := json.Unmarshal(jsonBytes, s)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal JSON to StatusUpdates: %w", err)
-	}
-	return nil
-}
-
-// RecordDataMap is a custom type for handling map[string]interface{} as JSONB.
-type RecordDataMap map[string]interface{}
-
-// Value implements the driver.Valuer interface for RecordDataMap.
-func (r RecordDataMap) Value() (driver.Value, error) {
-	if r == nil {
-		return nil, nil
-	}
-	jsonBytes, err := json.Marshal(r)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal RecordDataMap to JSON: %w", err)
-	}
-	return jsonBytes, nil
-}
-
-// Scan implements the sql.Scanner interface for RecordDataMap.
-func (r *RecordDataMap) Scan(value interface{}) error {
-	if value == nil {
-		*r = make(RecordDataMap) // Initialize to an empty map if DB value is NULL
-		return nil
-	}
-
-	var jsonBytes []byte
-	switch v := value.(type) {
-	case []byte:
-		jsonBytes = v
-	case string:
-		jsonBytes = []byte(v)
-	default:
-		return fmt.Errorf("unsupported type for RecordDataMap: %T", value)
-	}
-
-	if len(jsonBytes) == 0 {
-		*r = make(RecordDataMap) // Handle empty JSON as empty map
-		return nil
-	}
-
-	// Ensure the map is initialized before unmarshaling
-	if *r == nil {
-		*r = make(RecordDataMap)
-	}
-
-	err := json.Unmarshal(jsonBytes, r)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal JSON to RecordDataMap: %w", err)
 	}
 	return nil
 }

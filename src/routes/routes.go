@@ -31,11 +31,14 @@ func SetupRoutes() *gin.Engine {
 	userService := services.NewUserService(jwtSecret, jwtExpirationMinutes, validate)
 	schoolService := services.NewSchoolService(validate)
 	activityService := services.NewActivityService(validate)
+	recordService := services.NewRecordService(validate)
 
 	// Initialize handlers
+	authController := controllers.NewAuthController(userService, validate)
 	userController := controllers.NewUserController(userService, validate)
-	schoolController := controllers.NewSchoolController(schoolService, validate)
+	schoolController := controllers.NewSchoolController(schoolService, userService, validate)
 	activityController := controllers.NewActivityController(activityService, validate)
+	recordController := controllers.NewRecordController(recordService)
 
 	// Swagger documentation
 	// docs.SwaggerInfo.BasePath = "/api/v1"
@@ -49,13 +52,10 @@ func SetupRoutes() *gin.Engine {
 	// Public routes (no authentication required)
 	publicRoutes := router.Group("/api/v1")
 	{
-		publicRoutes.POST("/register", userController.RegisterUser)
-		publicRoutes.POST("/login", userController.Login)
-
-		publicRoutes.POST("/schools", schoolController.CreateSchool)
-		publicRoutes.GET("/schools", schoolController.GetAllSchools)
-		publicRoutes.PUT("/schools/:id", schoolController.UpdateSchool)
-		publicRoutes.DELETE("/schools/:id", schoolController.DeleteSchool)
+		publicRoutes.POST("/register", authController.RegisterUser)
+		publicRoutes.POST("/login", authController.Login)
+		publicRoutes.POST("/forgot-password/request", authController.RequestOtp)
+		publicRoutes.POST("/forgot-password/validate", authController.ValidateOtp)
 	}
 
 	// Authenticated routes (protected by JWT middlewares)
@@ -65,23 +65,30 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.GET("/me", userController.GetMyProfile)
 		authRoutes.GET("/users/:id", userController.GetUserByID)
 		authRoutes.PUT("/users/:id", userController.UpdateUserProfile)
-		authRoutes.PUT("/users/:id/password", userController.UpdateUserPassword) // New endpoint for password change
 		authRoutes.DELETE("/users/:id", userController.DeleteUser)
+		authRoutes.GET("/users/activities", userController.GetRelatedActivities)
 
-		// User-related routes with school context
-		// authRoutes.GET("/schools/:school_id/users", userController.GetUsersBySchoolID)
-		// authRoutes.PUT("/schools/:school_id/classrooms", userController.UpdateClassroomForSchool)
-		// authRoutes.PUT("/users/:student_id/classroom", userController.UpdateClassroomForStudent) // Uncommented
-		authRoutes.POST("/check-student-email", userController.CheckStudentEmailForRegistration)
+		authRoutes.GET("/schools", schoolController.GetAllSchools)
+		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
+		authRoutes.POST("/school", schoolController.CreateSchool)
+		authRoutes.PUT("/school/:id", schoolController.UpdateSchool)
+		authRoutes.DELETE("/school/:id", schoolController.DeleteSchool)
+		authRoutes.POST("/school/advance-semester", schoolController.AdvanceSemester)
+		authRoutes.POST("/school/revert-semester", schoolController.RevertSemester)
+		authRoutes.GET("/school/:id/users", schoolController.GetUsersBySchoolID)
 
 		// Activity Routes (newly added)
-		authRoutes.POST("/activities", activityController.CreateActivity)
+		authRoutes.POST("/activity", activityController.CreateActivity)
 		authRoutes.GET("/activities", activityController.GetAllActivities)
-		authRoutes.GET("/activities/:id", activityController.GetActivityByID)
-		authRoutes.PUT("/activities/:id", activityController.UpdateActivity)
-		authRoutes.DELETE("/activities/:id", activityController.DeleteActivity)
+		authRoutes.GET("/activity/:id", activityController.GetActivityByID)
+		authRoutes.PUT("/activity/:id", activityController.UpdateActivity)
+		authRoutes.DELETE("/activity/:id", activityController.DeleteActivity)
 
-		authRoutes.GET("/schools/:id", schoolController.GetSchoolByID)
+		authRoutes.GET("/records", recordController.GetAllRecords)
+		authRoutes.GET("/record/:id", recordController.GetRecordByID)
+		authRoutes.POST("/record", recordController.CreateRecord)
+		authRoutes.PUT("/record/:id", recordController.UpdateRecord)
+		authRoutes.DELETE("/record/:id", recordController.DeleteRecord)
 	}
 
 	return router

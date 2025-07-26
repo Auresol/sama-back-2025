@@ -209,24 +209,3 @@ func (s *UserService) GetUserCount() (int64, error) {
 func (s *UserService) GetUserCountBySchoolID(schoolID uint) (int64, error) {
 	return s.userRepo.CountUsersBySchoolID(schoolID)
 }
-
-// CheckStudentEmailForRegistration checks if an email is whitelisted for student registration in a school.
-// This is a simplified check. In a real system, you might have a dedicated
-// `SchoolEmailWhitelist` table or a field in the `School` model.
-func (s *UserService) CheckStudentEmailForRegistration(email string, schoolID uint) (bool, error) {
-	// For now, this just checks if a user with that email already exists in that school.
-	// A more robust solution might involve a separate "pre-registered emails" list for schools.
-	return s.userRepo.CheckEmailExistsInSchool(email, schoolID)
-}
-
-// UpdateClassroomForSchool updates the classroom for all students in a given school.
-// This operation should be restricted to ADMINs in the handler/controller.
-func (s *UserService) UpdateClassroomForSchool(schoolID uint, oldClassroom, newClassroom string) (int64, error) {
-	return s.userRepo.UpdateClassroomForSchool(schoolID, oldClassroom, newClassroom)
-}
-
-// UpdateClassroomForStudent updates the classroom for a specific student.
-// This operation should be restricted by role in the handler/controller.
-func (s *UserService) UpdateClassroomForStudent(studentID uint, newClassroom string) error {
-	return s.userRepo.UpdateClassroomForStudent(studentID, newClassroom)
-}

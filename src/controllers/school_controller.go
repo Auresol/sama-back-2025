@@ -16,17 +16,20 @@ import (
 // SchoolController manages HTTP requests for schools.
 type SchoolController struct {
 	schoolService *services.SchoolService
+	userService   *services.UserService
 	validate      *validator.Validate
 }
 
 // NewSchoolController creates a new SchoolController.
 func NewSchoolController(
 	schoolService *services.SchoolService,
-	validaete *validator.Validate,
+	userService *services.UserService,
+	validate *validator.Validate,
 ) *SchoolController {
 	return &SchoolController{
 		schoolService: schoolService,
-		validate:      validaete,
+		userService:   userService,
+		validate:      validate,
 	}
 }
 
@@ -70,7 +73,7 @@ type UpdateSchoolRequest struct {
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
 // @Failure 409 {object} ErrorResponse "School with this email or short name already exists"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /schools [post]
+// @Router /school [post]
 func (h *SchoolController) CreateSchool(c *gin.Context) {
 	// claims, ok := middlewares.GetUserClaimsFromContext(c)
 	// if !ok {
@@ -138,7 +141,7 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 // @Failure 403 {object} ErrorResponse "Forbidden (not authorized to access this school's data)"
 // @Failure 404 {object} ErrorResponse "School not found"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /schools/{id} [get]
+// @Router /school/{id} [get]
 func (h *SchoolController) GetSchoolByID(c *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
@@ -226,7 +229,7 @@ func (h *SchoolController) GetAllSchools(c *gin.Context) {
 // @Failure 404 {object} ErrorResponse "School not found"
 // @Failure 409 {object} ErrorResponse "New email or short name already exists for another school"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /schools/{id} [put]
+// @Router /school/{id} [put]
 func (h *SchoolController) UpdateSchool(c *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
@@ -321,7 +324,7 @@ func (h *SchoolController) UpdateSchool(c *gin.Context) {
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
 // @Failure 404 {object} ErrorResponse "School not found"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /schools/{id} [delete]
+// @Router /school/{id} [delete]
 func (h *SchoolController) DeleteSchool(c *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
@@ -357,4 +360,180 @@ func (h *SchoolController) DeleteSchool(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent) // 204 No Content for successful deletion
+}
+
+// SemesterTransitionRequest represents the request body for semester transition operations.
+type SemesterTransitionRequest struct {
+	SchoolID uint `json:"school_id" binding:"required,gt=0" example:"1"`
+}
+
+// SemesterTransitionResponse represents the response body for semester transition operations.
+type SemesterTransitionResponse struct {
+	Message string `json:"message" example:"Operation completed successfully"`
+}
+
+// AdvanceSemester handles moving an entire school to the next semester.
+// @Summary Move school to next semester
+// @Description Advances the specified school to the next academic semester. Requires ADMIN or Sama Crew role.
+// @Tags School
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param semester_transition body SemesterTransitionRequest true "School ID for semester transition"
+// @Success 200 {object} SemesterTransitionResponse "Operation completed successfully"
+// @Failure 400 {object} ErrorResponse "Invalid request payload or school ID"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
+// @Failure 404 {object} ErrorResponse "School not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /school/advance-semester [post]
+func (h *SchoolController) AdvanceSemester(c *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	// Authorization: Only ADMINs (for their school) or SAMA_CREW can perform this
+	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
+		return
+	}
+
+	var req SemesterTransitionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+		return
+	}
+
+	// If ADMIN, ensure they are operating on their own school
+	if claims.Role == "ADMIN" && claims.SchoolID != req.SchoolID {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: ADMIN can only move their own school's semester"})
+		return
+	}
+
+	// TODO: Implement the service call to move the school to the next semester
+	// Example:
+	// err := h.schoolService.MoveSchoolToNextSemester(req.SchoolID)
+	// if err != nil {
+	//     if errors.Is(err, gorm.ErrRecordNotFound) {
+	//         c.JSON(http.StatusNotFound, ErrorResponse{Message: fmt.Sprintf("School with ID %d not found", req.SchoolID)})
+	//         return
+	//     }
+	//     c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to move school to next semester: " + err.Error()})
+	//     return
+	// }
+
+	c.JSON(http.StatusOK, SemesterTransitionResponse{Message: "School moved to next semester successfully"})
+}
+
+// RevertSemester handles reverting an entire school back to the previous semester.
+// @Summary Revert school to previous semester
+// @Description Reverts the specified school to the previous academic semester. Requires ADMIN or Sama Crew role.
+// @Tags School
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param semester_transition body SemesterTransitionRequest true "School ID for semester transition"
+// @Success 200 {object} SemesterTransitionResponse "Operation completed successfully"
+// @Failure 400 {object} ErrorResponse "Invalid request payload or school ID"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
+// @Failure 404 {object} ErrorResponse "School not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /school/revert-semester [post]
+func (h *SchoolController) RevertSemester(c *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	// Authorization: Only ADMINs (for their school) or SAMA_CREW can perform this
+	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
+		return
+	}
+
+	var req SemesterTransitionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+		return
+	}
+
+	// If ADMIN, ensure they are operating on their own school
+	if claims.Role == "ADMIN" && claims.SchoolID != req.SchoolID {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: ADMIN can only revert their own school's semester"})
+		return
+	}
+
+	// TODO: Implement the service call to revert the school to the previous semester
+	// Example:
+	// err := h.schoolService.RevertSchoolSemester(req.SchoolID)
+	// if err != nil {
+	//     if errors.Is(err, gorm.ErrRecordNotFound) {
+	//         c.JSON(http.StatusNotFound, ErrorResponse{Message: fmt.Sprintf("School with ID %d not found", req.SchoolID)})
+	//         return
+	//     }
+	//     c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to revert school semester: " + err.Error()})
+	//     return
+	// }
+
+	c.JSON(http.StatusOK, SemesterTransitionResponse{Message: "School reverted to previous semester successfully"})
+}
+
+// GetUsersBySchoolID handles retrieving users by school ID.
+// @Summary Get users by school ID
+// @Description Retrieve a list of users belonging to a specific school. Requires ADMIN or Sama Crew role.
+// @Tags School
+// @Security BearerAuth
+// @Produce json
+// @Param school_id path int true "School ID"
+// @Param limit query int false "Limit for pagination" default(10)
+// @Param offset query int false "Offset for pagination" default(0)
+// @Success 200 {array} models.User "List of users retrieved successfully"
+// @Failure 400 {object} ErrorResponse "Invalid school ID or pagination parameters"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /school/{id}/users [get]
+func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	// Authorization: Only ADMINs (for their school) or SAMA_CREW can access this
+	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
+		return
+	}
+
+	schoolID, err := strconv.ParseUint(c.Param("school_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid school ID"})
+		return
+	}
+
+	// If ADMIN, ensure they are requesting users from their own school
+	if claims.Role == "ADMIN" && claims.SchoolID != uint(schoolID) {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: ADMIN can only view users from their own school"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
+		return
+	}
+
+	// Omit passwords from response
+	for i := range users {
+		users[i].Password = ""
+	}
+	c.JSON(http.StatusOK, users)
 }

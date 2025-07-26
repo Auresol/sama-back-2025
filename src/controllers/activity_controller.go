@@ -32,7 +32,7 @@ func NewActivityController(activityService *services.ActivityService, validate *
 type CreateActivityRequest struct {
 	Name string `json:"activity_name" binding:"required" example:"School Cleanup Drive"`
 
-	Template map[string]interface{} `json:"template" binding:"required" swaggerignore:"true"`
+	Template map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
 
 	IsRequired   bool   `json:"is_required" binding:"required" example:"true"`
 	CoverageType string `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
@@ -80,7 +80,7 @@ type UpdateActivityRequest struct {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /activities [post]
+// @Router /activity [post]
 func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
@@ -148,7 +148,7 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 // @Failure 403 {object} ErrorResponse "Forbidden (not authorized to view this activity)"
 // @Failure 404 {object} ErrorResponse "Activity not found"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /activities/{id} [get]
+// @Router /activity/{id} [get]
 func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
@@ -286,7 +286,7 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not owner)"
 // @Failure 404 {object} ErrorResponse "Activity not found"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /activities/{id} [put]
+// @Router /activity/{id} [put]
 func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
@@ -409,7 +409,7 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not owner)"
 // @Failure 404 {object} ErrorResponse "Activity not found"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /activities/{id} [delete]
+// @Router /activity/{id} [delete]
 func (c *ActivityController) DeleteActivity(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
