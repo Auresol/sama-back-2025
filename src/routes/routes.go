@@ -67,6 +67,7 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.PUT("/users/:id", userController.UpdateUserProfile)
 		authRoutes.DELETE("/users/:id", userController.DeleteUser)
 		authRoutes.GET("/users/activities", userController.GetRelatedActivities)
+		authRoutes.GET("/users/records", userController.GetRelatedRecords) // require pagination
 
 		authRoutes.GET("/schools", schoolController.GetAllSchools)
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
@@ -77,7 +78,6 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.POST("/school/revert-semester", schoolController.RevertSemester)
 		authRoutes.GET("/school/:id/users", schoolController.GetUsersBySchoolID)
 
-		// Activity Routes (newly added)
 		authRoutes.POST("/activity", activityController.CreateActivity)
 		authRoutes.GET("/activities", activityController.GetAllActivities)
 		authRoutes.GET("/activity/:id", activityController.GetActivityByID)
@@ -89,6 +89,10 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.POST("/record", recordController.CreateRecord)
 		authRoutes.PUT("/record/:id", recordController.UpdateRecord)
 		authRoutes.DELETE("/record/:id", recordController.DeleteRecord)
+		authRoutes.PATCH("/record/:id/send", recordController.SendRecord)
+		authRoutes.PATCH("/record/:id/unsend", recordController.UnsendRecord)
+		authRoutes.PATCH("/record/:id/approve", recordController.ApproveRecord)
+		authRoutes.PATCH("/record/:id/reject", recordController.RejectRecord)
 	}
 
 	return router

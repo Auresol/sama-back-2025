@@ -29,35 +29,31 @@ func NewRecordController(recordService *services.RecordService) *RecordControlle
 type CreateRecordRequest struct {
 	ActivityID uint                   `json:"activity_id" binding:"required,gt=0" example:"1"` // Assuming ActivityID is uint
 	Data       map[string]interface{} `json:"data" binding:"required" swaggertype:"object,string" example:"field:test"`
-	Advise     string                 `json:"advise,omitempty" example:"Good effort!"`
-
-	StudentID uint `json:"student_id" binding:"required,gt=0" example:"101"`
-	TeacherID uint `json:"teacher_id" binding:"required,gt=0" example:"201"`
-
-	SchoolYear int `json:"school_year" binding:"required,gt=0" example:"2568"`
-	Semester   int `json:"semester" binding:"required,gt=0" example:"1"`
-
-	Amount int `json:"amount" binding:"required" example:"5"`
-
-	Status string `json:"status" binding:"required,oneof=CREATED SENDED APPROVED REJECTED" example:"CREATED"`
+	Amount     int                    `json:"amount" binding:"required" example:"5"`
 }
 
 // UpdateRecordRequest defines the request body for updating an existing record.
 type UpdateRecordRequest struct {
-	ActivityID *uint                  `json:"activity_id,omitempty" binding:"omitempty,gt=0" example:"2"` // Pointer for optional update
-	Data       map[string]interface{} `json:"data,omitempty" swaggertype:"object,string" example:"field:test"`
-	Advise     *string                `json:"advise,omitempty" example:"Needs more practice."`
+	Data   map[string]interface{} `json:"data" binding:"required" swaggertype:"object,string" example:"field:test"`
+	Amount int                    `json:"amount" binding:"reqiured,gt=0" example:"7"`
+}
 
-	SchoolID  *uint `json:"school_id,omitempty" binding:"omitempty,gt=0" example:"1"`
-	StudentID *uint `json:"student_id,omitempty" binding:"omitempty,gt=0" example:"101"`
-	TeacherID *uint `json:"teacher_id,omitempty" binding:"omitempty,gt=0" example:"201"`
+// UpdateRecordRequest defines the request body for updating an existing record.
+type SendRecordRequest struct {
+	TeacherID uint `json:"teacher_id" binding:"required" example:"1"`
+}
 
-	SchoolYear *int `json:"school_year,omitempty" binding:"omitempty,gt=0" example:"2569"`
-	Semester   *int `json:"semester,omitempty" binding:"omitempty,gt=0" example:"2"`
+// UpdateRecordRequest defines the request body for updating an existing record.
+type ApproveRecordRequest struct {
+	Advice *string `json:"advice" binding:"required" example:"Good jobs"`
+}
 
-	Amount *int `json:"amount,omitempty" example:"7"`
+// UpdateRecordRequest defines the request body for updating an existing record.
+type RejectRecordRequest struct {
+	Advice *string `json:"advice" binding:"required" example:"Not so good"`
+}
 
-	Status *string `json:"status,omitempty" binding:"omitempty,oneof=CREATED SENDED APPROVED REJECTED" example:"APPROVED"` // Status can be updated
+type UnsendRecordRequest struct {
 }
 
 // CreateRecord handles creating a new record.
@@ -96,13 +92,11 @@ func (c *RecordController) CreateRecord(ctx *gin.Context) {
 
 	record := &models.Record{
 		ActivityID: req.ActivityID, // Assuming this is uint
-		Advise:     req.Advise,
-		StudentID:  req.StudentID,
-		TeacherID:  req.TeacherID,
-		SchoolYear: req.SchoolYear,
-		Semester:   req.Semester,
+		StudentID:  claims.UserID,
+		SchoolYear: 1,
+		Semester:   1,
 		Amount:     req.Amount,
-		Status:     req.Status,
+		Status:     "CREATED",
 	}
 
 	// Unmarshal raw JSON into map[string]interface{}
@@ -291,13 +285,13 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 }
 
 // UpdateRecord handles updating an existing record.
-// @Summary Update a record
-// @Description Update an existing record by ID. Requires relevant student/teacher/admin, or Sama Crew role.
+// @Summary Update an existing record
+// @Description Update an existing record's data and/or amount. Accessible by relevant student/teacher/admin, or Sama Crew.
 // @Tags Records
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param id path int true "Record ID to update"
+// @Param id path int true "Record ID"
 // @Param record body UpdateRecordRequest true "Record update details"
 // @Success 200 {object} models.Record "Record updated successfully"
 // @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
@@ -313,9 +307,9 @@ func (c *RecordController) UpdateRecord(ctx *gin.Context) {
 		return
 	}
 
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	recordID, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid record ID"})
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid record ID in path"})
 		return
 	}
 
@@ -325,10 +319,10 @@ func (c *RecordController) UpdateRecord(ctx *gin.Context) {
 		return
 	}
 
-	// Fetch existing record for authorization and to apply updates
-	recordToUpdate, err := c.recordService.GetRecordByID(uint(id))
+	// Fetch existing record for authorization and update
+	existingRecord, err := c.recordService.GetRecordByID(uint(recordID))
 	if err != nil {
-		if err.Error() == fmt.Sprintf("record with ID %d not found", id) {
+		if err.Error() == fmt.Sprintf("record with ID %d not found", recordID) {
 			ctx.JSON(http.StatusNotFound, ErrorResponse{Message: err.Error()})
 			return
 		}
@@ -336,19 +330,16 @@ func (c *RecordController) UpdateRecord(ctx *gin.Context) {
 		return
 	}
 
-	// Authorization:
-	// SAMA_CREW can update any record.
-	// ADMIN can update records in their school.
-	// TCH can update records they are assigned to or for students in their school.
-	// STD can update their own records (e.g., changing status from CREATED to SENDED).
+	// Authorization logic for updating a record:
+	// Example: Student can only update their own records if status is CREATED.
+	// Teacher can update records for students in their school if status is CREATED/SENDED.
+	// Admin/SAMA_CREW can update any record.
 	isAuthorized := false
-	// if claims.Role == "SAMA_CREW" {
+	// if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" { // Admins/Sama Crew can edit any record
 	// 	isAuthorized = true
-	// } else if claims.Role == "STD" && claims.UserID == recordToUpdate.StudentID {
+	// } else if claims.Role == "STD" && claims.UserID == existingRecord.StudentID && existingRecord.Status == "CREATED" {
 	// 	isAuthorized = true
-	// } else if claims.Role == "TCH" && (claims.UserID == recordToUpdate.TeacherID || claims.SchoolID == recordToUpdate.SchoolID) {
-	// 	isAuthorized = true
-	// } else if claims.Role == "ADMIN" && claims.SchoolID == recordToUpdate.SchoolID {
+	// } else if claims.Role == "TCH" && claims.SchoolID == existingRecord.SchoolID && (existingRecord.Status == "CREATED" || existingRecord.Status == "SENDED") {
 	// 	isAuthorized = true
 	// }
 
@@ -357,44 +348,17 @@ func (c *RecordController) UpdateRecord(ctx *gin.Context) {
 		return
 	}
 
-	// Apply updates from request to the fetched record model
-	if req.ActivityID != nil {
-		recordToUpdate.ActivityID = *req.ActivityID
-	}
-	if req.Data != nil {
-		// if err := json.Unmarshal(req.Data, &recordToUpdate.Data); err != nil {
-		// 	ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid data JSON: " + err.Error()})
-		// 	return
-		// }
-	}
-	if req.Advise != nil {
-		recordToUpdate.Advise = *req.Advise
-	}
-	if req.StudentID != nil {
-		recordToUpdate.StudentID = *req.StudentID
-	}
-	if req.TeacherID != nil {
-		recordToUpdate.TeacherID = *req.TeacherID
-	}
-	if req.SchoolYear != nil {
-		recordToUpdate.SchoolYear = *req.SchoolYear
-	}
-	if req.Semester != nil {
-		recordToUpdate.Semester = *req.Semester
-	}
-	if req.Amount != nil {
-		recordToUpdate.Amount = *req.Amount
-	}
-	if req.Status != nil {
-		recordToUpdate.Status = *req.Status
-	}
+	// Update the record fields
+	existingRecord.Data = req.Data
+	existingRecord.Amount = req.Amount
 
-	if err := c.recordService.UpdateRecord(recordToUpdate, claims.UserID); err != nil {
+	// Pass the authenticated user's ID for status log
+	if err := c.recordService.UpdateRecord(existingRecord, claims.UserID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update record: " + err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, recordToUpdate)
+	ctx.JSON(http.StatusOK, existingRecord)
 }
 
 // DeleteRecord handles deleting a record.
@@ -404,7 +368,7 @@ func (c *RecordController) UpdateRecord(ctx *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Record ID to delete"
-// @Success 204 "Record deleted successfully"
+// @Success 204 {object} SuccessfulResponse "Record deleted successfully"
 // @Failure 400 {object} ErrorResponse "Invalid record ID"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this record)"
@@ -464,4 +428,334 @@ func (c *RecordController) DeleteRecord(ctx *gin.Context) {
 	}
 
 	ctx.Status(http.StatusNoContent) // 204 No Content for successful deletion
+}
+
+// SendRecord handles sending a record for approval.
+// @Summary Send a record
+// @Description Change the status of a record to 'SENDED'.
+// @Tags Records
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "Record ID"
+// @Param record body SendRecordRequest true "Teacher ID to send to"
+// @Success 200 {object} models.Record "Record sent successfully"
+// @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or record not in creatable status)"
+// @Failure 404 {object} ErrorResponse "Record not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /record/{id}/send [patch]
+func (c *RecordController) SendRecord(ctx *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	recordID, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid record ID in path"})
+		return
+	}
+
+	var req SendRecordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+		return
+	}
+
+	// Fetch existing record for authorization and status check
+	existingRecord, err := c.recordService.GetRecordByID(uint(recordID))
+	if err != nil {
+		if err.Error() == fmt.Sprintf("record with ID %d not found", recordID) {
+			ctx.JSON(http.StatusNotFound, ErrorResponse{Message: err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve record for sending: " + err.Error()})
+		return
+	}
+
+	// Authorization & Status Check:
+	// Only the student who owns the record, if status is 'CREATED', can send it.
+	// Or ADMIN/SAMA_CREW can send any record.
+	isAuthorized := false
+	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
+		isAuthorized = true
+	} else if claims.Role == "STD" && claims.UserID == existingRecord.StudentID && existingRecord.Status == "CREATED" {
+		isAuthorized = true
+	}
+
+	if !isAuthorized {
+		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to send this record, or record is not in 'CREATED' status."})
+		return
+	}
+
+	// Call service method to change status to SENDED
+	// if err := c.recordService.SendRecord(uint(recordID), req.TeacherID, claims.UserID); err != nil {
+	// 	if err.Error() == fmt.Sprintf("record %d cannot be sent: invalid status", recordID) { // Example of a specific service error
+	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+	// 		return
+	// 	}
+	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to send record: " + err.Error()})
+	// 	return
+	// }
+
+	// Retrieve the updated record to return
+	updatedRecord, err := c.recordService.GetRecordByID(uint(recordID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve updated record: " + err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, updatedRecord)
+}
+
+// ApproveRecord handles approving a record.
+// @Summary Approve a record
+// @Description Change the status of a record to 'APPROVED'. Requires teacher or admin role.
+// @Tags Records
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "Record ID"
+// @Param record body ApproveRecordRequest true "Optional advice for approval"
+// @Success 200 {object} models.Record "Record approved successfully"
+// @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or record not in sendable status)"
+// @Failure 404 {object} ErrorResponse "Record not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /record/{id}/approve [patch]
+func (c *RecordController) ApproveRecord(ctx *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	recordID, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid record ID in path"})
+		return
+	}
+
+	var req ApproveRecordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+		return
+	}
+
+	// Fetch existing record for authorization and status check
+	existingRecord, err := c.recordService.GetRecordByID(uint(recordID))
+	if err != nil {
+		if err.Error() == fmt.Sprintf("record with ID %d not found", recordID) {
+			ctx.JSON(http.StatusNotFound, ErrorResponse{Message: err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve record for approval: " + err.Error()})
+		return
+	}
+
+	// Authorization & Status Check:
+	// Only the assigned teacher or admin/SAMA_CREW can approve.
+	// Record must be in 'SENDED' status.
+	isAuthorized := false
+	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
+		isAuthorized = true
+	} else if claims.Role == "TCH" && claims.UserID == existingRecord.TeacherID && existingRecord.Status == "SENDED" {
+		isAuthorized = true
+	}
+
+	if !isAuthorized {
+		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to approve this record, or record is not in 'SENDED' status."})
+		return
+	}
+
+	// Call service method to change status to APPROVED
+	// if err := c.recordService.ApproveRecord(uint(recordID), req.Advice, claims.UserID); err != nil {
+	// 	if err.Error() == fmt.Sprintf("record %d cannot be approved: invalid status", recordID) { // Example of a specific service error
+	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+	// 		return
+	// 	}
+	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to approve record: " + err.Error()})
+	// 	return
+	// }
+
+	// Retrieve the updated record to return
+	updatedRecord, err := c.recordService.GetRecordByID(uint(recordID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve updated record: " + err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, updatedRecord)
+}
+
+// RejectRecord handles rejecting a record.
+// @Summary Reject a record
+// @Description Change the status of a record to 'REJECTED'. Requires teacher or admin role.
+// @Tags Records
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "Record ID"
+// @Param record body RejectRecordRequest true "Optional advice for rejection"
+// @Success 200 {object} models.Record "Record rejected successfully"
+// @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or record not in sendable status)"
+// @Failure 404 {object} ErrorResponse "Record not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /record/{id}/reject [patch]
+func (c *RecordController) RejectRecord(ctx *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	recordID, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid record ID in path"})
+		return
+	}
+
+	var req RejectRecordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+		return
+	}
+
+	// Fetch existing record for authorization and status check
+	existingRecord, err := c.recordService.GetRecordByID(uint(recordID))
+	if err != nil {
+		if err.Error() == fmt.Sprintf("record with ID %d not found", recordID) {
+			ctx.JSON(http.StatusNotFound, ErrorResponse{Message: err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve record for rejection: " + err.Error()})
+		return
+	}
+
+	// Authorization & Status Check:
+	// Only the assigned teacher or admin/SAMA_CREW can reject.
+	// Record must be in 'SENDED' status.
+	isAuthorized := false
+	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
+		isAuthorized = true
+	} else if claims.Role == "TCH" && claims.UserID == existingRecord.TeacherID && existingRecord.Status == "SENDED" {
+		isAuthorized = true
+	}
+
+	if !isAuthorized {
+		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to reject this record, or record is not in 'SENDED' status."})
+		return
+	}
+
+	// Call service method to change status to REJECTED
+	// if err := c.recordService.RejectRecord(uint(recordID), req.Advice, claims.UserID); err != nil {
+	// 	if err.Error() == fmt.Sprintf("record %d cannot be rejected: invalid status", recordID) { // Example of a specific service error
+	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+	// 		return
+	// 	}
+	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to reject record: " + err.Error()})
+	// 	return
+	// }
+
+	// Retrieve the updated record to return
+	updatedRecord, err := c.recordService.GetRecordByID(uint(recordID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve updated record: " + err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, updatedRecord)
+}
+
+// UnsendRecord handles unsending a record.
+// @Summary Unsend a record
+// @Description Change the status of a record back to 'CREATED' from 'SENDED'.
+// @Tags Records
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path int true "Record ID"
+// @Param record body UnsendRecordRequest true "Empty request body as ID is in path"
+// @Success 200 {object} models.Record "Record unsent successfully"
+// @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or record not in sendable status)"
+// @Failure 404 {object} ErrorResponse "Record not found"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /record/{id}/unsend [patch]
+func (c *RecordController) UnsendRecord(ctx *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	recordID, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid record ID in path"})
+		return
+	}
+
+	// var req UnsendRecordRequest // Still bind to check for empty/malformed body if needed, though no fields
+	// if err := ctx.ShouldBindJSON(&req); err != nil {
+	// 	// Depending on your gin setup, an empty JSON body might still trigger an error here.
+	// 	// If you expect a truly empty body ({}), this check might be too strict.
+	// 	// For PATCH, it's safer to always allow an empty body for request structs with no fields.
+	// 	// If `binding:"required"` was on internal fields, it'd still be relevant.
+	// 	// Given UnsendRecordRequest has no fields, this `ShouldBindJSON` check might be simplified
+	// 	// or even removed if you truly expect an empty body and don't need validation for it.
+	// 	// For now, keeping it to be consistent with other methods' error handling pattern.
+	// 	ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+	// 	return
+	// }
+
+	// Fetch existing record for authorization and status check
+	existingRecord, err := c.recordService.GetRecordByID(uint(recordID))
+	if err != nil {
+		if err.Error() == fmt.Sprintf("record with ID %d not found", recordID) {
+			ctx.JSON(http.StatusNotFound, ErrorResponse{Message: err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve record for unsending: " + err.Error()})
+		return
+	}
+
+	// Authorization & Status Check:
+	// Only the student who sent the record (if status is 'SENDED'), or ADMIN/SAMA_CREW can unsend it.
+	isAuthorized := false
+	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
+		isAuthorized = true
+	} else if claims.Role == "STD" && claims.UserID == existingRecord.StudentID && existingRecord.Status == "SENDED" {
+		isAuthorized = true
+	}
+
+	if !isAuthorized {
+		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to unsend this record, or record is not in 'SENDED' status."})
+		return
+	}
+
+	// // Call service method to change status to CREATED
+	// if err := c.recordService.UnsendRecord(uint(recordID), claims.UserID); err != nil {
+	// 	if err.Error() == fmt.Sprintf("record %d cannot be unsent: invalid status", recordID) { // Example of a specific service error
+	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+	// 		return
+	// 	}
+	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to unsend record: " + err.Error()})
+	// 	return
+	// }
+
+	// Retrieve the updated record to return
+	updatedRecord, err := c.recordService.GetRecordByID(uint(recordID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve updated record: " + err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, updatedRecord)
 }

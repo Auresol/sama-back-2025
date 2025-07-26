@@ -5,14 +5,14 @@ import (
 )
 
 type Classroom struct {
-	ID        uint   `gorm:"primarykey"`
-	SchoolID  uint   `json:"school_id,omitempty"`
-	Class     uint   `json:"class"`
-	Room      uint   `json:"room"`
-	Classroom string `json:"classroom"`
+	ID        uint   `gorm:"primarykey" validate:"required"`
+	SchoolID  uint   `json:"school_id" validate:"required"`
+	Class     uint   `json:"class" validate:"required"`
+	Room      uint   `json:"room" validate:"required"`
+	Classroom string `json:"classroom" validate:"required"`
 
-	School     School      `json:"school"`
-	Activities []*Activity `json:"activity" gorm:"many2many:activity_exclusive_classroom"`
+	School     School      `json:"-"`
+	Activities []*Activity `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

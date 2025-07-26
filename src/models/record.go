@@ -9,25 +9,27 @@ import (
 
 // Record represents an activity record, mapped to a PostgreSQL table.
 type Record struct {
-	ID uint `gorm:"primarykey"`
+	ID uint `gorm:"primarykey" validate:"required"`
 
-	ActivityID uint                   `json:"activity_id,omitempty" validate:"required"`
-	Data       map[string]interface{} `json:"data" gorm:"serializer:json"`
+	ActivityID uint                   `json:"activity_id" validate:"required"`
+	Data       map[string]interface{} `json:"data" gorm:"serializer:json" validate:"required"`
 	Advise     string                 `json:"advise,omitempty"` // Advise might be optional
 
 	// Foreign keys to other models
-	StudentID uint `json:"student_id,omitempty" gorm:"index" validate:"required,gt=0"` // Index for faster lookups
-	TeacherID uint `json:"teacher_id,omitempty" gorm:"index" validate:"required,gt=0"` // Index for faster lookups
+	StudentID uint `json:"student_id" gorm:"index" validate:"required,gt=0"`  // Index for faster lookups
+	TeacherID uint `json:"teacher_id,omitempty" gorm:"index" validate:"gt=0"` // Index for faster lookups
 
-	SchoolYear int `json:"school_year,omitempty" validate:"required,gt=0"`
-	Semester   int `json:"semester,omitempty" validate:"required,gt=0"`
+	SchoolYear int `json:"school_year" validate:"required,gt=0"`
+	Semester   int `json:"semester" validate:"required,gt=0"`
 
-	Amount int `json:"amount"`
+	Amount int `json:"amount" validate:"required"`
 
-	StatusLogs StatusLogs `json:"status_logs,omitempty" gorm:"type:jsonb"`
-	Status     string     `json:"status,omitempty" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
+	StatusLogs StatusLogs `json:"status_logs" gorm:"type:jsonb" validate:"required"`
+	Status     string     `json:"status" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
 
-	Activity Activity `json:"activity"`
+	Activity Activity `json:"activity,omitempty"`
+	Student  User     `json:"-"`
+	Teacher  User     `json:"-"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -36,8 +38,8 @@ type Record struct {
 
 // StatusUpdateTime represents a single status update event.
 type StatusHistory struct {
-	Status     string    `json:"status"`
-	UpdateTime time.Time `json:"update_time"`
+	Status     string    `json:"status" validate:"required"`
+	UpdateTime time.Time `json:"update_time" validate:"required"`
 }
 
 // StatusUpdates is a custom type for handling []StatusUpdateTime as JSONB.

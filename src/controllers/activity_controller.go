@@ -30,24 +30,15 @@ func NewActivityController(activityService *services.ActivityService, validate *
 
 // CreateActivityRequest defines the request body for creating a new activity.
 type CreateActivityRequest struct {
-	Name string `json:"activity_name" binding:"required" example:"School Cleanup Drive"`
+	Name string `json:"name" binding:"required" example:"School Cleanup Drive"`
 
 	Template map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
 
 	IsRequired   bool   `json:"is_required" binding:"required" example:"true"`
 	CoverageType string `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
 
-	// SchoolID is the ID of the school this activity belongs to.
-	// This might be derived from the authenticated user's school ID, or explicitly provided.
-	SchoolID uint `json:"school_id" binding:"required,gt=0" example:"1"`
-
-	// ExclusiveClassrooms: List of composite keys for classrooms.
-	// Required if CoverageType is "JUNIOR" or "SENIOR" and IsRequired is false.
-	ExclusiveClassrooms []string `json:"exclusive_classrooms,omitempty" example:"1/1"`
-
-	// ExclusiveStudentIDs: List of User IDs for specific students.
-	// Required if CoverageType is "CUSTOM" (if you add CUSTOM back) or for specific use cases.
-	ExclusiveStudentIDs []uint `json:"exclusive_student_ids,omitempty" example:"101"`
+	ExclusiveClassrooms []string `json:"exclusive_classrooms"  binding:"required" example:"1/1"`
+	ExclusiveStudentIDs []uint   `json:"exclusive_student_ids"  binding:"required" example:"101"`
 
 	FinishedUnit   string `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
 	FinishedAmount int    `json:"finished_amount" binding:"required,gt=0" example:"10"` // Must be positive
@@ -57,14 +48,13 @@ type CreateActivityRequest struct {
 
 // UpdateActivityRequest defines the request body for updating an activity.
 type UpdateActivityRequest struct {
-	Name             string                 `json:"activity_name,omitempty" binding:"omitempty" example:"School Cleanup"`
-	Template         map[string]interface{} `json:"template,omitempty"` // Can use map[string]interface{} or models.ActivityTemplate
-	CoverageType     string                 `json:"coverage_type,omitempty" binding:"omitempty,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
-	CustomStudentIDs []uint                 `json:"custom_student_ids,omitempty" ` // Provide empty array to clear
-	IsActive         *bool                  `json:"is_active,omitempty" example:"true"`
-	FinishedUnit     string                 `json:"finished_condition" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount   int                    `json:"finished_amount"`
-	UpdateProtocol   string                 `json:"update_protocol,omitempty" binding:"omitempty,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"IGNORE_PAST_RECORDS"`
+	Name             string                 `json:"activity_name" binding:"required" example:"School Cleanup"`
+	Template         map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
+	CoverageType     string                 `json:"coverage_type" binding:"required,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
+	CustomStudentIDs []uint                 `json:"custom_student_ids" binding:"required" example:"101"` // Provide empty array to clear
+	IsActive         bool                   `json:"is_active" binding:"required" example:"true"`
+	FinishedAmount   int                    `json:"finished_amount" binding:"required"`
+	UpdateProtocol   string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"IGNORE_PAST_RECORDS"`
 }
 
 // CreateActivity handles creating a new activity.
@@ -360,21 +350,21 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 		// activityToUpdate.CustomStudentIDs = existingActivity.CustomStudentIDs
 	}
 
-	if req.IsActive != nil {
-		activityToUpdate.IsActive = *req.IsActive
-	} else {
-		activityToUpdate.IsActive = existingActivity.IsActive
-	}
-	if req.FinishedUnit != "" {
-		activityToUpdate.FinishedUnit = req.FinishedUnit
-	} else {
-		activityToUpdate.FinishedUnit = existingActivity.FinishedUnit
-	}
-	if req.UpdateProtocol != "" {
-		activityToUpdate.UpdateProtocol = req.UpdateProtocol
-	} else {
-		activityToUpdate.UpdateProtocol = existingActivity.UpdateProtocol
-	}
+	// if req.IsActive != nil {
+	// 	activityToUpdate.IsActive = *req.IsActive
+	// } else {
+	// 	activityToUpdate.IsActive = existingActivity.IsActive
+	// }
+	// if req.FinishedUnit != "" {
+	// 	activityToUpdate.FinishedUnit = req.FinishedUnit
+	// } else {
+	// 	activityToUpdate.FinishedUnit = existingActivity.FinishedUnit
+	// }
+	// if req.UpdateProtocol != "" {
+	// 	activityToUpdate.UpdateProtocol = req.UpdateProtocol
+	// } else {
+	// 	activityToUpdate.UpdateProtocol = existingActivity.UpdateProtocol
+	// }
 
 	// OwnerID and Timestamps are usually not updated via public API
 	activityToUpdate.OwnerID = existingActivity.OwnerID
@@ -403,7 +393,7 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Activity ID to delete"
-// @Success 204 "Activity deleted successfully"
+// @Success 204 {object} SuccessfulResponse "Activity deleted successfully"
 // @Failure 400 {object} ErrorResponse "Invalid activity ID"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not owner)"

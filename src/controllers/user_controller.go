@@ -107,18 +107,14 @@ func (h *UserController) GetUserByID(c *gin.Context) {
 // UpdateUserProfileRequest represents the request body for updating a user's profile.
 // Use a separate struct for update requests to control what fields can be updated.
 type UpdateUserProfileRequest struct {
-	Email             string  `json:"email,omitempty" binding:"omitempty,email" example:"new_email@example.com"`
-	Phone             string  `json:"phone,omitempty" example:"+1987654321"`
-	Firstname         string  `json:"firstname,omitempty" example:"Jane"`
-	Lastname          string  `json:"lastname,omitempty" example:"Doe"`
+	Email             string  `json:"email" binding:"omitempty,email" example:"new_email@example.com"`
+	Phone             string  `json:"phone" example:"+1987654321"`
+	Firstname         string  `json:"firstname" example:"Jane"`
+	Lastname          string  `json:"lastname" example:"Doe"`
 	ProfilePictureURL *string `json:"profile_picture_url,omitempty" example:"http://example.com/pic.jpg"`
-	IsActive          *bool   `json:"is_active,omitempty" example:"true"` // Pointer for optional boolean update
-	Classroom         string  `json:"classroom,omitempty" example:"B202"`
+	Classroom         *string `json:"classroom,omitempty" example:"1/1" validate:"classroomregex"`
 	Number            *uint   `json:"number,omitempty" binding:"omitempty,number" example:"2"` // Pointer for optional int update
-	Status            string  `json:"status,omitempty" example:"active"`
-	Language          string  `json:"language,omitempty" example:"th"`
-	// Role and SchoolID are typically not updated via this endpoint or require special permissions
-	// Password update should be a separate endpoint
+	Language          string  `json:"language" example:"th"`
 }
 
 // UpdateUserProfile handles updating a user's profile.
@@ -193,14 +189,11 @@ func (h *UserController) UpdateUserProfile(c *gin.Context) {
 	// if req.IsActive != nil { // Check if pointer is not nil
 	// 	userToUpdate.IsActive = *req.IsActive
 	// }
-	if req.Classroom != "" {
-		userToUpdate.Classroom = req.Classroom
+	if req.Classroom != nil {
+		userToUpdate.Classroom = *req.Classroom
 	}
 	if req.Number != nil { // Check if pointer is not nil
 		userToUpdate.Number = *req.Number
-	}
-	if req.Status != "" {
-		userToUpdate.Status = req.Status
 	}
 	if req.Language != "" {
 		userToUpdate.Language = req.Language
@@ -222,7 +215,7 @@ func (h *UserController) UpdateUserProfile(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "User ID to delete"
-// @Success 204 "User deleted successfully"
+// @Success 204 {object} SuccessfulResponse "User deleted successfully"
 // @Failure 400 {object} ErrorResponse "Invalid user ID"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
@@ -260,7 +253,7 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 	c.Status(http.StatusNoContent) // 204 No Content for successful deletion
 }
 
-// GetRelatedActivities retrieves a list of activities related to the authenticated user. All activities will contain "".
+// GetRelatedActivities retrieves a list of activities related to the authenticated user.
 // This includes activities where the user is the owner, or part of exclusive classrooms/students.
 // @Summary Get activities related to the authenticated user
 // @Description Retrieve a list of activities that are assigned to or owned by the authenticated user.
@@ -295,4 +288,41 @@ func (c *UserController) GetRelatedActivities(ctx *gin.Context) {
 
 	// For now, returning a placeholder response
 	ctx.JSON(http.StatusOK, []models.Activity{}) // Return an empty array or mock data
+}
+
+// GetRelatedRecords retrieves a list of record related to the authenticated user.
+// This include records that user created (for student) or checking (for teacher)
+// @Summary Get records related to the authenticated user
+// @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
+// @Tags User
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} models.Record "List of related activities retrieved successfully"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /user/records [get]
+func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
+	// claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	// if !ok {
+	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+	// 	return
+	// }
+
+	// TODO: Implement the service call to fetch activities related to claims.UserID
+	// This service method would need to query activities where:
+	// 1. owner_id matches claims.UserID
+	// 2. coverage_type is 'ALL' (if applicable to this user's school)
+	// 3. user is in an exclusive_classroom (requires joining through activity_exclusive_classrooms and Classroom model's composite PK)
+	// 4. user is in exclusive_student_ids (requires joining through activity_exclusive_student_ids)
+	// This will be a more complex query in the repository.
+
+	// Example placeholder for activities:
+	// activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
+	// if err != nil {
+	//     ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
+	//     return
+	// }
+
+	// For now, returning a placeholder response
+	ctx.JSON(http.StatusOK, []models.Record{}) // Return an empty array or mock data
 }

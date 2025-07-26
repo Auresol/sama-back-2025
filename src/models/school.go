@@ -8,15 +8,17 @@ import (
 
 // School represents a school entity, mapped to a PostgreSQL table.
 type School struct {
-	ID uint `json:"id" gorm:"primarykey"`
+	ID uint `json:"id" gorm:"primarykey" validate:"required"`
 
-	ThaiName      string      `json:"thai_name,omitempty" validate:"required"`
-	EnglishName   string      `json:"english_name,omitempty" validate:"required"`
-	ShortName     string      `json:"short_name,omitempty" gorm:"uniqueIndex" validate:"required"`  // Added unique index for short_name
-	Email         string      `json:"email,omitempty" gorm:"uniqueIndex" validate:"required,email"` // Added unique index for email
-	Location      string      `json:"location,omitempty" validate:"required"`
-	Phone         string      `json:"phone,omitempty" validate:"required,e164"` // e164 for phone number validation
-	Classrooms    []string    `json:"classrooms" gorm:"-:all"`
+	ThaiName                string    `json:"thai_name" validate:"required"`
+	EnglishName             string    `json:"english_name" validate:"required"`
+	ShortName               string    `json:"short_name" gorm:"uniqueIndex" validate:"required"` // Added unique index for short_name
+	Email                   string    `json:"email,omitempty" validate:"email"`
+	Location                string    `json:"location,omitempty"`
+	Phone                   string    `json:"phone" validate:"e164"` // e164 for phone number validation
+	DefaultActivityDeadline time.Time `json:"default_activity_deadline" validate:"required"`
+
+	Classrooms    []string    `json:"classrooms" gorm:"-:all" validate:"required"`
 	ClassroomList []Classroom `json:"-" gorm:"foreignKey:SchoolID"`
 
 	SchoolYear int `json:"school_year" validate:"required,gt=0"` // School year must be positive

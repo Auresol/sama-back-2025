@@ -134,11 +134,11 @@ func (s *ActivityService) UpdateActivity(activity *models.Activity) error {
 	existingActivity.UpdateProtocol = activity.UpdateProtocol
 
 	// Handle InactiveDate logic
-	if !existingActivity.IsActive && existingActivity.InactiveDate == nil {
+	if !existingActivity.IsActive && existingActivity.Deadline == nil {
 		now := time.Now()
-		existingActivity.InactiveDate = &now
-	} else if existingActivity.IsActive && existingActivity.InactiveDate != nil {
-		existingActivity.InactiveDate = nil // Clear InactiveDate if re-activated
+		existingActivity.Deadline = &now
+	} else if existingActivity.IsActive && existingActivity.Deadline != nil {
+		existingActivity.Deadline = nil // Clear InactiveDate if re-activated
 	}
 
 	// Validate the updated existingActivity struct (including its tags)

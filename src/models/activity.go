@@ -8,29 +8,29 @@ import (
 
 // Activity represents a type of activity students perform, mapped to a PostgreSQL table.
 type Activity struct {
-	ID uint `gorm:"primarykey"`
+	ID uint `json:"id" gorm:"primarykey" validate:"required"`
 
-	SchoolID uint   `json:"school_id,omitempty"`
-	Name     string `json:"activity_name,omitempty" validate:"required"`
+	SchoolID uint   `json:"school_id" validate:"required"`
+	Name     string `json:"name" validate:"required"`
 
-	Template map[string]interface{} `json:"template" gorm:"serializer:json"`
+	Template map[string]interface{} `json:"template" gorm:"serializer:json" validate:"required"`
 
-	IsRequired   bool   `json:"is_required,omitempty" validate:"required"`
-	CoverageType string `json:"coverage_type,omitempty" validate:"required,oneof=ALL JUNIOR SENIOR"`
+	IsRequired   bool   `json:"is_required" validate:"required"`
+	CoverageType string `json:"coverage_type" validate:"required,oneof=ALL JUNIOR SENIOR"`
 
-	ExclusiveClassrooms    []string     `json:"exclusive_classroom,omitempty" gorm:"-:all"`
+	ExclusiveClassrooms    []string     `json:"exclusive_classroom" validate:"required" gorm:"-:all"`
 	ExclusiveClassroomList []*Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
-	ExclusiveStudentIDs    []uint  `json:"exclusive_student_ids,omitempty" gorm:"-:all"`
+	ExclusiveStudentIDs    []uint  `json:"exclusive_student_ids" validate:"required" gorm:"-:all"`
 	ExclusiveStudentIDList []*User `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 
-	OwnerID uint `json:"owner_id,omitempty" gorm:"index" validate:"required,gt=0"` // ID of the creator (User)
+	OwnerID uint `json:"owner_id" gorm:"index" validate:"required,gt=0"` // ID of the creator (User)
 
-	IsActive     bool       `json:"is_active"`               // Still able to create new records
-	InactiveDate *time.Time `json:"inactive_date,omitempty"` // The date when activity is closed (nullable)
+	IsActive bool       `json:"is_active" validate:"required"` // Still able to create new records
+	Deadline *time.Time `json:"deadline,omitempty"`            // The date when activity is closed (nullable)
 
 	FinishedUnit   string `json:"finished_condition" validate:"required,oneof=TIMES HOURS"`
-	FinishedAmount int    `json:"finished_amount"`
+	FinishedAmount int    `json:"finished_amount" validate:"required"`
 	UpdateProtocol string `json:"update_protocol,omitempty" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
 
 	CreatedAt time.Time `json:"created_at"`

@@ -61,11 +61,6 @@ func (s *UserService) RegisterUser(user *models.User) error {
 		defaultPictureURL := "" // Or a default placeholder URL
 		user.ProfilePictureURL = &defaultPictureURL
 	}
-	// Default to active if not explicitly set for new users
-	if user.ID == 0 { // This check ensures it's a new user creation
-		user.IsActive = true
-	}
-
 	// Create the user
 	return s.userRepo.CreateUser(user)
 }
@@ -83,11 +78,6 @@ func (s *UserService) Login(email, password string) (string, error) {
 			return "", errors.New("invalid credentials")
 		}
 		return "", fmt.Errorf("failed to retrieve user for login: %w", err)
-	}
-
-	// Check if user is active
-	if !user.IsActive {
-		return "", errors.New("user account is deactivated")
 	}
 
 	// Compare password (hashed password from DB vs. plain text password from input)
@@ -150,10 +140,8 @@ func (s *UserService) UpdateUserProfile(user *models.User) error {
 	existingUser.Firstname = user.Firstname
 	existingUser.Lastname = user.Lastname
 	existingUser.ProfilePictureURL = user.ProfilePictureURL
-	existingUser.IsActive = user.IsActive
 	existingUser.Classroom = user.Classroom
 	existingUser.Number = user.Number
-	existingUser.Status = user.Status
 	existingUser.Language = user.Language
 	// Role and SchoolID might require specific permissions to change and should be handled carefully
 

@@ -38,9 +38,9 @@ type CreateSchoolRequest struct {
 	ThaiName    string   `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยา"`
 	EnglishName string   `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
 	ShortName   string   `json:"short_name" binding:"required" example:"SMK"`
-	Email       string   `json:"email" binding:"required,email" example:"info@smk.ac.th"`
-	Location    string   `json:"location" binding:"required" example:"Bangkok, Thailand"`
-	Phone       string   `json:"phone" binding:"required,e164" example:"+66812345678"`
+	Email       *string  `json:"email,omitempty" binding:"email" example:"info@smk.ac.th"`
+	Location    *string  `json:"location,omitempty" example:"Bangkok, Thailand"`
+	Phone       *string  `json:"phone,omitempty" binding:"e164" example:"+66812345678"`
 	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
 	SchoolYear  int      `json:"school_year" binding:"required,gt=0" example:"2568"`
 	Semester    int      `json:"semester" binding:"required,gt=0" example:"1"`
@@ -48,15 +48,13 @@ type CreateSchoolRequest struct {
 
 // UpdateSchoolRequest represents the request body for updating an existing school.
 type UpdateSchoolRequest struct {
-	ThaiName    string   `json:"thai_name,omitempty" binding:"omitempty" example:"โรงเรียนสามัคคีวิทยาใหม่"`
-	EnglishName string   `json:"english_name,omitempty" binding:"omitempty" example:"New Samakkee Wittaya School"`
-	ShortName   string   `json:"short_name,omitempty" binding:"omitempty" example:"NSMK"`
-	Email       string   `json:"email,omitempty" binding:"omitempty,email" example:"new_info@smk.ac.th"`
-	Location    string   `json:"location,omitempty" binding:"omitempty" example:"Nonthaburi, Thailand"`
-	Phone       string   `json:"phone,omitempty" binding:"omitempty,e164" example:"+66923456789"`
+	ThaiName    string   `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยาใหม่"`
+	EnglishName string   `json:"english_name" binding:"required" example:"New Samakkee Wittaya School"`
+	ShortName   string   `json:"short_name" binding:"required" example:"NSMK"`
+	Email       *string  `json:"email,omitempty" binding:"omitempty,email" example:"new_info@smk.ac.th"`
+	Location    *string  `json:"location,omitempty" binding:"omitempty" example:"Nonthaburi, Thailand"`
+	Phone       *string  `json:"phone,omitempty" binding:"omitempty,e164" example:"+66923456789"`
 	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
-	SchoolYear  int      `json:"school_year,omitempty" binding:"omitempty,gt=0" example:"2569"`
-	Semester    int      `json:"semester,omitempty" binding:"omitempty,gt=0" example:"2"`
 }
 
 // CreateSchool handles the creation of a new school.
@@ -108,9 +106,9 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 		ThaiName:    req.ThaiName,
 		EnglishName: req.EnglishName,
 		ShortName:   req.ShortName,
-		Email:       req.Email,
-		Location:    req.Location,
-		Phone:       req.Phone,
+		Email:       *req.Email,
+		Location:    *req.Location,
+		Phone:       *req.Phone,
 		Classrooms:  req.Classrooms,
 		SchoolYear:  req.SchoolYear,
 		Semester:    req.Semester,
@@ -283,21 +281,21 @@ func (h *SchoolController) UpdateSchool(c *gin.Context) {
 	if req.ShortName != "" {
 		schoolToUpdate.ShortName = req.ShortName
 	}
-	if req.Email != "" {
-		schoolToUpdate.Email = req.Email
-	}
-	if req.Location != "" {
-		schoolToUpdate.Location = req.Location
-	}
-	if req.Phone != "" {
-		schoolToUpdate.Phone = req.Phone
-	}
-	if req.SchoolYear != 0 { // Assuming 0 means not provided for int
-		schoolToUpdate.SchoolYear = req.SchoolYear
-	}
-	if req.Semester != 0 { // Assuming 0 means not provided for int
-		schoolToUpdate.Semester = req.Semester
-	}
+	// if req.Email != "" {
+	// 	schoolToUpdate.Email = req.Email
+	// }
+	// if req.Location != "" {
+	// 	schoolToUpdate.Location = req.Location
+	// }
+	// if req.Phone != "" {
+	// 	schoolToUpdate.Phone = req.Phone
+	// }
+	// if req.SchoolYear != 0 { // Assuming 0 means not provided for int
+	// 	schoolToUpdate.SchoolYear = req.SchoolYear
+	// }
+	// if req.Semester != 0 { // Assuming 0 means not provided for int
+	// 	schoolToUpdate.Semester = req.Semester
+	// }
 
 	if err := h.schoolService.UpdateSchool(schoolToUpdate); err != nil {
 		if err.Error() == "new email already exists for another school" || err.Error() == "new short name already exists for another school" {
@@ -318,7 +316,7 @@ func (h *SchoolController) UpdateSchool(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "School ID to delete"
-// @Success 204 "School deleted successfully"
+// @Success 204 {object} SuccessfulResponse "School deleted successfully"
 // @Failure 400 {object} ErrorResponse "Invalid school ID"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
@@ -498,6 +496,62 @@ func (h *SchoolController) RevertSemester(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /school/{id}/users [get]
 func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	// Authorization: Only ADMINs (for their school) or SAMA_CREW can access this
+	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
+		return
+	}
+
+	schoolID, err := strconv.ParseUint(c.Param("school_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid school ID"})
+		return
+	}
+
+	// If ADMIN, ensure they are requesting users from their own school
+	if claims.Role == "ADMIN" && claims.SchoolID != uint(schoolID) {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: ADMIN can only view users from their own school"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
+		return
+	}
+
+	// Omit passwords from response
+	for i := range users {
+		users[i].Password = ""
+	}
+	c.JSON(http.StatusOK, users)
+}
+
+// GetStatistic get statistic based on activity_id and classroom
+// @Summary Get users by school ID
+// @Description Retrieve a list of users belonging to a specific school. Requires ADMIN or Sama Crew role.
+// @Tags School
+// @Security BearerAuth
+// @Produce json
+// @Param school_id path int true "School ID"
+// @Param limit query int false "Limit for pagination" default(10)
+// @Param offset query int false "Offset for pagination" default(0)
+// @Success 200 {array} models.User "List of users retrieved successfully"
+// @Failure 400 {object} ErrorResponse "Invalid school ID or pagination parameters"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /school/{id}/statistic [get]
+func (h *SchoolController) GetStatistic(c *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})

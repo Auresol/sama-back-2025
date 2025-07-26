@@ -6,29 +6,24 @@ import (
 
 // User represents a user in the system, mapped to a PostgreSQL table.
 type User struct {
-	ID uint `gorm:"primarykey"`
+	ID uint `gorm:"primarykey" validate:"required"`
 
-	UserID   string `json:"user_id,omitempty" gorm:"uniqueIndex"` // Unique index for user_id
-	Role     string `json:"role,omitempty" validate:"required,oneof=STD TCH ADMIN SAMA"`
-	Email    string `json:"email,omitempty" gorm:"uniqueIndex" validate:"required,email"` // Unique index for email
-	Password string `json:"-"`
-
+	StudentID         string  `json:"student_id,omitempty"` // Unique index for user_id
+	Role              string  `json:"role" validate:"required,oneof=STD TCH ADMIN SAMA"`
+	Email             string  `json:"email" gorm:"uniqueIndex" validate:"required,email"` // Unique index for email
+	Password          string  `json:"-"`
 	Phone             string  `json:"phone,omitempty"`
-	Firstname         string  `json:"firstname,omitempty" validate:"required"`
-	Lastname          string  `json:"lastname,omitempty" validate:"required"`
+	Firstname         string  `json:"firstname" validate:"required"`
+	Lastname          string  `json:"lastname" validate:"required"`
 	ProfilePictureURL *string `json:"profile_picture_url,omitempty"`
-	IsVerified        bool    `json:"-"`
-	IsActive          bool    `json:"is_active,omitempty"`
+	Language          string  `json:"language" validate:"required"`
 
-	Activities []*Activity `json:"activities,omitempty" gorm:"many2many:activity_exclusive_student_ids"`
+	SchoolID  uint   `json:"school_id" validate:"required"`
+	Classroom string `json:"classroom,omitempty" validate:"classroomregex"`
+	Number    uint   `json:"number,omitempty" validate:"gt=0"`
 
-	SchoolID  uint   `json:"school_id,omitempty" validate:"required"`
-	Classroom string `json:"classroom_id,omitempty"`
-	Number    uint   `json:"number,omitempty" validate:"required,number"`
-	Status    string `json:"status,omitempty"`
-	Language  string `json:"language,omitempty"`
-
-	School School `json:"school" gorm:"foreignKey:SchoolID"`
+	School     School      `json:"school,omitempty" gorm:"foreignKey:SchoolID"`
+	Activities []*Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
