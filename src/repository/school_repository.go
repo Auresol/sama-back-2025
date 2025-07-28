@@ -68,7 +68,7 @@ func (r *SchoolRepository) GetSchoolByID(id uint) (*models.School, error) {
 // GetSchoolByEmail retrieves a school by its unique email.
 func (r *SchoolRepository) GetSchoolByEmail(email string) (*models.School, error) {
 	var school models.School
-	err := r.db.Where("email = ?", email).First(&school).Error
+	err := r.db.Preload("ClassroomList").Where("email = ?", email).First(&school).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("school with email %s not found", email)
@@ -81,7 +81,7 @@ func (r *SchoolRepository) GetSchoolByEmail(email string) (*models.School, error
 // GetSchoolByShortName retrieves a school by its unique short name.
 func (r *SchoolRepository) GetSchoolByShortName(shortName string) (*models.School, error) {
 	var school models.School
-	err := r.db.Where("short_name = ?", shortName).First(&school).Error
+	err := r.db.Preload("ClassroomList").Where("short_name = ?", shortName).First(&school).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("school with short name %s not found", shortName)
@@ -94,7 +94,7 @@ func (r *SchoolRepository) GetSchoolByShortName(shortName string) (*models.Schoo
 // GetAllSchools retrieves all schools with pagination.
 func (r *SchoolRepository) GetAllSchools(limit, offset int) ([]models.School, error) {
 	var schools []models.School
-	err := r.db.Limit(limit).Offset(offset).Preload("ClassroomList").Find(&schools).Error
+	err := r.db.Preload("ClassroomList").Limit(limit).Offset(offset).Preload("ClassroomList").Find(&schools).Error
 
 	return schools, err
 }
@@ -102,7 +102,48 @@ func (r *SchoolRepository) GetAllSchools(limit, offset int) ([]models.School, er
 // UpdateSchool updates an existing school record.
 func (r *SchoolRepository) UpdateSchool(school *models.School) error {
 	// Use Save for full updates or Select/Omit for partial updates
-	return r.db.Save(school).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// 1. Create the School
+		oldSchool := models.School{}
+		if err := tx.Preload("ClassroomList").Find(oldSchool).Error; err != nil {
+			return fmt.Errorf("failed to create school with id %d: %w", school.ID, err)
+		}
+
+		// Check classroom list
+		// 1: existed in incoming school update request only, add new classroom
+		// 2: already existed in school but not request, remove classroom
+		// 3: existed in both, do nothing
+		classStatus := make(map[string]uint8)
+		for _, sc := range school.Classrooms {
+			classStatus[sc] = 1
+		}
+
+		for _, osc := range oldSchool.Classrooms {
+			if classStatus[osc] == 1 {
+				classStatus[osc] = 3
+				continue
+			}
+			classStatus[osc] = 2
+		}
+
+		for name, status := range classStatus {
+			if status == 1 {
+				if err := createClassroom(tx, school.ID, name); err != nil {
+					return err
+				}
+				continue
+			}
+
+			if status == 2 {
+				if err := tx.Delete(models.Classroom{}, "school_id = ? AND classroom = ?", school.ID, name); err != nil {
+					return fmt.Errorf("failed to remove classroom '%s' in school id %d: %w", name, school.ID, err)
+				}
+			}
+
+		}
+
+		return nil // Return nil to commit the transaction
+	})
 }
 
 // DeleteSchool deletes a school record by its ID.
@@ -122,4 +163,21 @@ func (r *SchoolRepository) CountSchools() (int64, error) {
 	var count int64
 	err := r.db.Model(&models.School{}).Count(&count).Error
 	return count, err
+}
+
+func createClassroom(tx *gorm.DB, schoolID uint, name string) error {
+	class, room := utils.ClassroomSplit(name)
+
+	classroom := &models.Classroom{
+		SchoolID: schoolID, // Assign the ID of the newly created school
+		Class:    uint(class),
+		Room:     uint(room),
+	}
+	if err := tx.Create(classroom).Error; err != nil {
+		// If a classroom fails to create (e.g., duplicate name for this school),
+		// the transaction will be rolled back.
+		return fmt.Errorf("failed to create classroom '%s' for school ID %d: %w", name, schoolID, err)
+	}
+
+	return nil
 }

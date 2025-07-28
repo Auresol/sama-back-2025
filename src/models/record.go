@@ -1,9 +1,6 @@
 package models
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -24,10 +21,10 @@ type Record struct {
 
 	Amount int `json:"amount" validate:"required"`
 
-	StatusLogs StatusLogs `json:"status_logs" gorm:"type:jsonb" validate:"required"`
+	StatusLogs StatusLogs `json:"status_logs" gorm:"serializer:json" validate:"required"`
 	Status     string     `json:"status" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
 
-	Activity Activity `json:"activity,omitempty"`
+	Activity Activity `json:"-"`
 	Student  User     `json:"-"`
 	Teacher  User     `json:"-"`
 
@@ -36,60 +33,60 @@ type Record struct {
 	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
 }
 
+// StatusUpdates is a custom type for handling []StatusUpdateTime as JSONB.
+type StatusLogs []StatusHistory
+
 // StatusUpdateTime represents a single status update event.
 type StatusHistory struct {
 	Status     string    `json:"status" validate:"required"`
 	UpdateTime time.Time `json:"update_time" validate:"required"`
 }
 
-// StatusUpdates is a custom type for handling []StatusUpdateTime as JSONB.
-type StatusLogs []StatusHistory
+// // Value implements the driver.Valuer interface for StatusUpdates.
+// func (s StatusLogs) Value() (driver.Value, error) {
+// 	if s == nil {
+// 		return json.Marshal([]StatusLogs{}) // Return empty array for consistency
+// 	}
+// 	jsonBytes, err := json.Marshal(s)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to marshal StatusUpdates to JSON: %w", err)
+// 	}
+// 	return jsonBytes, nil
+// }
 
-// Value implements the driver.Valuer interface for StatusUpdates.
-func (s StatusLogs) Value() (driver.Value, error) {
-	if s == nil {
-		return json.Marshal([]StatusLogs{}) // Return empty array for consistency
-	}
-	jsonBytes, err := json.Marshal(s)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal StatusUpdates to JSON: %w", err)
-	}
-	return jsonBytes, nil
-}
+// // Scan implements the sql.Scanner interface for StatusUpdates.
+// func (s *StatusLogs) Scan(value interface{}) error {
+// 	if value == nil {
+// 		*s = make(StatusLogs, 0) // Initialize to an empty slice if DB value is NULL
+// 		return nil
+// 	}
 
-// Scan implements the sql.Scanner interface for StatusUpdates.
-func (s *StatusLogs) Scan(value interface{}) error {
-	if value == nil {
-		*s = make(StatusLogs, 0) // Initialize to an empty slice if DB value is NULL
-		return nil
-	}
+// 	var jsonBytes []byte
+// 	switch v := value.(type) {
+// 	case []byte:
+// 		jsonBytes = v
+// 	case string:
+// 		jsonBytes = []byte(v)
+// 	default:
+// 		return fmt.Errorf("unsupported type for StatusUpdates: %T", value)
+// 	}
 
-	var jsonBytes []byte
-	switch v := value.(type) {
-	case []byte:
-		jsonBytes = v
-	case string:
-		jsonBytes = []byte(v)
-	default:
-		return fmt.Errorf("unsupported type for StatusUpdates: %T", value)
-	}
+// 	if len(jsonBytes) == 0 {
+// 		*s = make(StatusLogs, 0) // Handle empty JSON as empty slice
+// 		return nil
+// 	}
 
-	if len(jsonBytes) == 0 {
-		*s = make(StatusLogs, 0) // Handle empty JSON as empty slice
-		return nil
-	}
+// 	// Ensure the slice is initialized before unmarshaling
+// 	if *s == nil {
+// 		*s = make(StatusLogs, 0)
+// 	}
 
-	// Ensure the slice is initialized before unmarshaling
-	if *s == nil {
-		*s = make(StatusLogs, 0)
-	}
-
-	err := json.Unmarshal(jsonBytes, s)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal JSON to StatusUpdates: %w", err)
-	}
-	return nil
-}
+// 	err := json.Unmarshal(jsonBytes, s)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to unmarshal JSON to StatusUpdates: %w", err)
+// 	}
+// 	return nil
+// }
 
 // TableName specifies the table name for the Record model.
 func (Record) TableName() string {

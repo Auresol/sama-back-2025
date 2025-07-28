@@ -66,7 +66,7 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.GET("/users/:id", userController.GetUserByID)
 		authRoutes.PUT("/users/:id", userController.UpdateUserProfile)
 		authRoutes.DELETE("/users/:id", userController.DeleteUser)
-		authRoutes.GET("/users/activities", userController.GetRelatedActivities)
+		authRoutes.GET("/users/activities", userController.GetAssignedActivities)
 		authRoutes.GET("/users/records", userController.GetRelatedRecords) // require pagination
 
 		authRoutes.GET("/schools", schoolController.GetAllSchools)

@@ -30,20 +30,15 @@ func NewActivityController(activityService *services.ActivityService, validate *
 
 // CreateActivityRequest defines the request body for creating a new activity.
 type CreateActivityRequest struct {
-	Name string `json:"name" binding:"required" example:"School Cleanup Drive"`
-
-	Template map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
-
-	IsRequired   bool   `json:"is_required" binding:"required" example:"true"`
-	CoverageType string `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
-
-	ExclusiveClassrooms []string `json:"exclusive_classrooms"  binding:"required" example:"1/1"`
-	ExclusiveStudentIDs []uint   `json:"exclusive_student_ids"  binding:"required" example:"101"`
-
-	FinishedUnit   string `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount int    `json:"finished_amount" binding:"required,gt=0" example:"10"` // Must be positive
-
-	UpdateProtocol string `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
+	Name                string                 `json:"name" binding:"required" example:"School Cleanup Drive"`
+	Template            map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
+	IsRequired          bool                   `json:"is_required" binding:"required" example:"true"`
+	CoverageType        string                 `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
+	ExclusiveClassrooms []string               `json:"exclusive_classrooms"  binding:"required" example:"1/1"`
+	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
+	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
+	FinishedAmount      int                    `json:"finished_amount" binding:"required,gt=0" example:"10"` // Must be positive
+	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }
 
 // UpdateActivityRequest defines the request body for updating an activity.

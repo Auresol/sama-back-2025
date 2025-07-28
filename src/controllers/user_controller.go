@@ -51,8 +51,6 @@ func (h *UserController) GetMyProfile(c *gin.Context) {
 		return
 	}
 
-	// Omit password from response
-	user.Password = ""
 	c.JSON(http.StatusOK, user)
 }
 
@@ -71,15 +69,14 @@ func (h *UserController) GetMyProfile(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /user/{id} [get]
 func (h *UserController) GetUserByID(c *gin.Context) {
-	// Example of role-based access control (RBAC)
 	claims, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
 		return
 	}
-	// Simplified RBAC: ADMIN or SAMA_CREW can get any user.
-	// You might add more granular checks here (e.g., ADMIN can only get users from their school).
-	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+
+	// STD are only allow for getMyProfile
+	if claims.Role == "STD" {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 		return
 	}
@@ -92,7 +89,7 @@ func (h *UserController) GetUserByID(c *gin.Context) {
 
 	user, err := h.userService.GetUserByID(uint(id))
 	if err != nil {
-		if err.Error() == fmt.Sprintf("user with ID %d not found", id) { // Check for specific not found error
+		if err.Error() == fmt.Sprintf("user with ID %d not found", id) {
 			c.JSON(http.StatusNotFound, ErrorResponse{Message: err.Error()})
 			return
 		}
@@ -100,7 +97,12 @@ func (h *UserController) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	user.Password = "" // Omit password
+	// Can get user outside their school only if they are SAMA
+	if claims.Role != "SAMA" && claims.SchoolID != user.SchoolID {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions (user not in your school)"})
+		return
+	}
+
 	c.JSON(http.StatusOK, user)
 }
 
@@ -146,19 +148,6 @@ func (h *UserController) UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Authorization: User can only update their own profile unless ADMIN/SAMA_CREW
-	if claims.UserID != uint(id) && claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
-		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: You can only update your own profile"})
-		return
-	}
-
-	var req UpdateUserProfileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
-		return
-	}
-
-	// Fetch the existing user to apply updates
 	userToUpdate, err := h.userService.GetUserByID(uint(id))
 	if err != nil {
 		if err.Error() == fmt.Sprintf("user with ID %d not found", id) {
@@ -169,42 +158,38 @@ func (h *UserController) UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
-	// Apply updates from request to the fetched user model
-	// Only update fields that are provided in the request
-	if req.Email != "" {
-		userToUpdate.Email = req.Email
+	// For STD and TCH, do not allow to update other user
+	if (claims.Role == "STD" || claims.Role == "TCH") && claims.UserID != userToUpdate.ID {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Can only update your profile"})
+		return
 	}
-	if req.Phone != "" {
-		userToUpdate.Phone = req.Phone
+
+	// For ADMIN, allow only their profile and other non-admin in the same school
+	if claims.Role == "ADMIN" && userToUpdate.SchoolID != claims.SchoolID && !(userToUpdate.ID == claims.UserID || userToUpdate.Role == "STD" || userToUpdate.Role == "TCH") {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Can only update your profile or anyone not ADMIN in your school"})
+		return
 	}
-	if req.Firstname != "" {
-		userToUpdate.Firstname = req.Firstname
+
+	var req UpdateUserProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+		return
 	}
-	if req.Lastname != "" {
-		userToUpdate.Lastname = req.Lastname
-	}
-	if req.ProfilePictureURL != nil { // Check if pointer is not nil
-		userToUpdate.ProfilePictureURL = req.ProfilePictureURL
-	}
-	// if req.IsActive != nil { // Check if pointer is not nil
-	// 	userToUpdate.IsActive = *req.IsActive
-	// }
-	if req.Classroom != nil {
-		userToUpdate.Classroom = *req.Classroom
-	}
-	if req.Number != nil { // Check if pointer is not nil
-		userToUpdate.Number = *req.Number
-	}
-	if req.Language != "" {
-		userToUpdate.Language = req.Language
-	}
+
+	userToUpdate.Email = req.Email
+	userToUpdate.Phone = req.Phone
+	userToUpdate.Firstname = req.Firstname
+	userToUpdate.Lastname = req.Lastname
+	userToUpdate.ProfilePictureURL = req.ProfilePictureURL
+	userToUpdate.Classroom = req.Classroom
+	userToUpdate.Number = req.Number
+	userToUpdate.Language = req.Language
 
 	if err := h.userService.UpdateUserProfile(userToUpdate); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update user profile: " + err.Error()})
 		return
 	}
 
-	userToUpdate.Password = "" // Omit password from response
 	c.JSON(http.StatusOK, userToUpdate)
 }
 
@@ -235,9 +220,25 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	// Authorization: User can delete their own profile, or ADMIN/SAMA_CREW can delete any.
-	if claims.UserID != uint(id) && claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
-		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: You can only delete your own profile or require higher permissions"})
+	user, err := h.userService.GetUserByID(uint(id))
+	if err != nil {
+		if err.Error() == fmt.Sprintf("user with ID %d not found", id) {
+			c.JSON(http.StatusNotFound, ErrorResponse{Message: err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve user: " + err.Error()})
+		return
+	}
+
+	// For STD and TCH, do not allow to update other user
+	if (claims.Role == "STD" || claims.Role == "TCH") && claims.UserID != user.ID {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Can only delete your profile"})
+		return
+	}
+
+	// For ADMIN, allow only their profile and other non-admin in the same school
+	if claims.Role == "ADMIN" && user.SchoolID != claims.SchoolID && !(user.ID == claims.UserID || user.Role == "STD" || user.Role == "TCH") {
+		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Can only delete your profile or anyone not ADMIN in your school"})
 		return
 	}
 
@@ -253,7 +254,7 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 	c.Status(http.StatusNoContent) // 204 No Content for successful deletion
 }
 
-// GetRelatedActivities retrieves a list of activities related to the authenticated user.
+// GetAssignedActivities retrieves a list of activities related to the authenticated user.
 // This includes activities where the user is the owner, or part of exclusive classrooms/students.
 // @Summary Get activities related to the authenticated user
 // @Description Retrieve a list of activities that are assigned to or owned by the authenticated user.
@@ -264,7 +265,47 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /user/activities [get]
-func (c *UserController) GetRelatedActivities(ctx *gin.Context) {
+func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
+
+	// TODO: Implement the service call to fetch activities related to claims.UserID
+	// This service method would need to query activities where:
+	// 1. owner_id matches claims.UserID
+	// 2. coverage_type is 'ALL' (if applicable to this user's school)
+	// 3. user is in an exclusive_classroom (requires joining through activity_exclusive_classrooms and Classroom model's composite PK)
+	// 4. user is in exclusive_student_ids (requires joining through activity_exclusive_student_ids)
+	// This will be a more complex query in the repository.
+
+	// Example placeholder for activities:
+	activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
+		return
+	}
+
+	// For now, returning a placeholder response
+	ctx.JSON(http.StatusOK, []models.Activity{}) // Return an empty array or mock data
+}
+
+// GetRelatedRecords retrieves a list of record related to the authenticated user.
+// This include records that user created (for student) or checking (for teacher)
+// @Summary Get records related to the authenticated user
+// @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
+// @Tags User
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} models.Record "List of related activities retrieved successfully"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /user/records [get]
+func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
 	// claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	// if !ok {
 	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
@@ -287,10 +328,10 @@ func (c *UserController) GetRelatedActivities(ctx *gin.Context) {
 	// }
 
 	// For now, returning a placeholder response
-	ctx.JSON(http.StatusOK, []models.Activity{}) // Return an empty array or mock data
+	ctx.JSON(http.StatusOK, []models.Record{}) // Return an empty array or mock data
 }
 
-// GetRelatedRecords retrieves a list of record related to the authenticated user.
+// GetStatisticByID retrieves a list of record related to the authenticated user.
 // This include records that user created (for student) or checking (for teacher)
 // @Summary Get records related to the authenticated user
 // @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
@@ -300,8 +341,8 @@ func (c *UserController) GetRelatedActivities(ctx *gin.Context) {
 // @Success 200 {array} models.Record "List of related activities retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/records [get]
-func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
+// @Router /user/{id}/statistic [get]
+func (c *UserController) GetStatisticByID(ctx *gin.Context) {
 	// claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	// if !ok {
 	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})

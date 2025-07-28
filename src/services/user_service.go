@@ -113,8 +113,8 @@ func (s *UserService) GetAllUsers(limit, offset int) ([]models.User, error) {
 
 // GetUsersBySchoolID retrieves users for a specific school.
 // This is for ADMINs to access users within their school.
-func (s *UserService) GetUsersBySchoolID(schoolID uint, limit, offset int) ([]models.User, error) {
-	return s.userRepo.GetUsersBySchoolID(schoolID, limit, offset)
+func (s *UserService) GetUsersBySchoolID(schoolID uint, role string, limit, offset int) ([]models.User, error) {
+	return s.userRepo.GetUsersBySchoolID(schoolID, role, limit, offset)
 }
 
 // UpdateUserProfile updates a user's profile information.

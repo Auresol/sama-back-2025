@@ -24,13 +24,31 @@ func NewUserRepository() *UserRepository {
 // CreateUser creates a new user account.
 // This method is used for registration by Sama Crew or ADMIN.
 func (r *UserRepository) CreateUser(user *models.User) error {
-	return r.db.Create(user).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+
+		// 1. Get classroom (if exised)
+		if user.Classroom != nil {
+			classroom := models.Classroom{}
+			if err := tx.Where("classroom = ?", user.Classroom).Find(classroom).Error; err != nil {
+				return fmt.Errorf("failed to get user's classroom: %w", err)
+			}
+
+			user.ClassroomID = &classroom.ID
+		}
+
+		// 2. Create user
+		if err := tx.Create(user).Error; err != nil {
+			return fmt.Errorf("failed to create user: %w", err)
+		}
+
+		return nil
+	})
 }
 
 // GetUserByID retrieves a user by ID.
 func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 	var user models.User
-	err := r.db.Preload("School").First(&user, id).Error
+	err := r.db.Preload("School").Preload("Classroom").First(&user, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with ID %d not found", id)
@@ -44,7 +62,7 @@ func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 // Useful for login authentication.
 func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Preload("School").Where("email = ?", email).First(&user).Error
+	err := r.db.Preload("School").Preload("Classroom").Where("email = ?", email).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with email %s not found", email)
@@ -56,16 +74,21 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 
 // GetUsersBySchoolID retrieves all users belonging to a specific school with pagination.
 // This supports the "only able to access data from their school" feature.
-func (r *UserRepository) GetUsersBySchoolID(schoolID uint, limit, offset int) ([]models.User, error) {
+func (r *UserRepository) GetUsersBySchoolID(schoolID uint, role string, limit, offset int) ([]models.User, error) {
 	var users []models.User
-	err := r.db.Where("school_id = ?", schoolID).Limit(limit).Offset(offset).Find(&users).Error
+	query := r.db.Preload("Classroom").Where("school_id = ?", schoolID)
+	if role != "" {
+		query.Where("role = ?", role)
+	}
+
+	err := query.Limit(limit).Offset(offset).Find(&users).Error
 	return users, err
 }
 
 // GetAllUsers retrieves all users with pagination (potentially for Sama Crew/Global ADMIN).
 func (r *UserRepository) GetAllUsers(limit, offset int) ([]models.User, error) {
 	var users []models.User
-	err := r.db.Limit(limit).Offset(offset).Find(&users).Error
+	err := r.db.Preload("Classroom").Limit(limit).Offset(offset).Find(&users).Error
 	return users, err
 }
 

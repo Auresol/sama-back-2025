@@ -72,7 +72,7 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) 
 
 // GetAllActivities retrieves all activities with pagination, optionally filtering by owner ID or school ID/year/semester.
 // This method can be expanded for more complex filtering.
-func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, schoolYear, semester, limit, offset int) ([]models.Activity, error) {
+func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, limit, offset int) ([]models.Activity, error) {
 	var activities []models.Activity
 	query := r.db.Model(&models.Activity{}) // Always preload students
 
@@ -85,12 +85,6 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, schoolYear
 		// For now, if schoolID is provided, we might need a join or subquery based on owner's school.
 		// For simplicity, let's assume filtering by SchoolYear and Semester directly linked to Activity
 		// is sufficient for school-level filtering if no direct SchoolID on Activity model.
-	}
-	if schoolYear != 0 {
-		query = query.Where("school_year = ?", schoolYear)
-	}
-	if semester != 0 {
-		query = query.Where("semester = ?", semester)
 	}
 
 	err := query.Limit(limit).Offset(offset).Find(&activities).Error

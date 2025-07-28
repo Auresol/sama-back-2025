@@ -68,9 +68,6 @@ docker-compose-restart:
 swagger-init:
 	swag init -g cmd/api/main.go
 
-swagger-serve:
-	swag init -g cmd/api/main.go && swag serve
-
 # Help
 help:
 	@echo "Available commands:"
@@ -90,5 +87,4 @@ help:
 	@echo "  docker-compose-logs  - View logs"
 	@echo "  docker-compose-restart - Restart services"
 	@echo "  swagger-init - Initialize Swagger docs"
-	@echo "  swagger-serve - Serve Swagger docs"
 	@echo "  help         - Show this help" 

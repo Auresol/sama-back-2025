@@ -127,7 +127,6 @@ func (s *ActivityService) UpdateActivity(activity *models.Activity) error {
 	existingActivity.Name = activity.Name
 	existingActivity.Template = activity.Template
 	existingActivity.CoverageType = activity.CoverageType
-	// existingActivity.CustomStudentIDs = activity.CustomStudentIDs // This will be handled by repo association
 	existingActivity.IsActive = activity.IsActive
 	existingActivity.FinishedUnit = activity.FinishedUnit
 	existingActivity.FinishedAmount = activity.FinishedAmount
@@ -157,4 +156,9 @@ func (s *ActivityService) UpdateActivity(activity *models.Activity) error {
 // DeleteActivity deletes an activity by its ID.
 func (s *ActivityService) DeleteActivity(id uint) error {
 	return s.activityRepo.DeleteActivity(id)
+}
+
+// GetAllActivities retrieves activities with filtering and pagination.
+func (s *ActivityService) GetAllActivities(ownerID, schoolID uint, schoolYear, semester, limit, offset int) ([]models.Activity, error) {
+	return s.activityRepo.GetAllActivities(ownerID, schoolID, schoolYear, semester, limit, offset)
 }
