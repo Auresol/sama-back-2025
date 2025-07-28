@@ -56,6 +56,7 @@ func SetupRoutes() *gin.Engine {
 		publicRoutes.POST("/login", authController.Login)
 		publicRoutes.POST("/forgot-password/request", authController.RequestOtp)
 		publicRoutes.POST("/forgot-password/validate", authController.ValidateOtp)
+		publicRoutes.POST("/school", schoolController.CreateSchool)
 	}
 
 	// Authenticated routes (protected by JWT middlewares)
@@ -71,7 +72,6 @@ func SetupRoutes() *gin.Engine {
 
 		authRoutes.GET("/schools", schoolController.GetAllSchools)
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
-		authRoutes.POST("/school", schoolController.CreateSchool)
 		authRoutes.PUT("/school/:id", schoolController.UpdateSchool)
 		authRoutes.DELETE("/school/:id", schoolController.DeleteSchool)
 		authRoutes.POST("/school/advance-semester", schoolController.AdvanceSemester)

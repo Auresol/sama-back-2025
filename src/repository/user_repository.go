@@ -48,7 +48,7 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 // GetUserByID retrieves a user by ID.
 func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 	var user models.User
-	err := r.db.Preload("School").Preload("Classroom").First(&user, id).Error
+	err := r.db.Preload("School").Preload("ClassroomModel").First(&user, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with ID %d not found", id)
@@ -62,7 +62,7 @@ func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 // Useful for login authentication.
 func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Preload("School").Preload("Classroom").Where("email = ?", email).First(&user).Error
+	err := r.db.Preload("School").Preload("ClassroomModel").Where("email = ?", email).First(&user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with email %s not found", email)
@@ -76,7 +76,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 // This supports the "only able to access data from their school" feature.
 func (r *UserRepository) GetUsersBySchoolID(schoolID uint, role string, limit, offset int) ([]models.User, error) {
 	var users []models.User
-	query := r.db.Preload("Classroom").Where("school_id = ?", schoolID)
+	query := r.db.Preload("ClassroomModel").Where("school_id = ?", schoolID)
 	if role != "" {
 		query.Where("role = ?", role)
 	}
@@ -88,7 +88,7 @@ func (r *UserRepository) GetUsersBySchoolID(schoolID uint, role string, limit, o
 // GetAllUsers retrieves all users with pagination (potentially for Sama Crew/Global ADMIN).
 func (r *UserRepository) GetAllUsers(limit, offset int) ([]models.User, error) {
 	var users []models.User
-	err := r.db.Preload("Classroom").Limit(limit).Offset(offset).Find(&users).Error
+	err := r.db.Preload("ClassroomModel").Limit(limit).Offset(offset).Find(&users).Error
 	return users, err
 }
 

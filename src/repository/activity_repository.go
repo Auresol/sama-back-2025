@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 
 	"sama/sama-backend-2025/src/models"
-	"sama/sama-backend-2025/src/utils"
 )
 
 // ActivityRepository handles database operations for the Activity model.
@@ -26,32 +25,25 @@ func NewActivityRepository() *ActivityRepository {
 // It also handles associating custom students if provided.
 func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Create the activity first
-		// if err := tx.Create(activity).Error; err != nil {
-		// 	return fmt.Errorf("failed to create activity: %w", err)
-		// }
 
-		// 2. Create associated Classrooms
-		activity.ExclusiveClassroomList = r.classroomTransform(
-			activity.ExclusiveClassrooms,
-			activity.SchoolID,
-		)
+		// TODO: use virtual table + join everything
+		activity.ExclusiveClassroomObjects = make([]*models.Classroom, len(activity.ExclusiveClassrooms))
+		// Get classroom's id first
+		for i, name := range activity.ExclusiveClassrooms {
+			if err := tx.Where("school_id = ? AND classroom = ?", activity.SchoolID, name).First(&activity.ExclusiveClassroomObjects[i]).Error; err != nil {
+				return fmt.Errorf("failed to find classroom '%s': %w", name, err)
+			}
+		}
 
-		activity.ExclusiveStudentIDList = r.userTransform(
-			activity.ExclusiveStudentIDs,
-		)
+		for _, class := range activity.ExclusiveClassroomObjects {
+			fmt.Println(class)
+		}
 
-		// for _, student := range activity.ExclusiveStudentIDs {
-		// 	if err := tx.Model(activity).Association("CustomStudentIDs").Append(&student); err != nil {
-		// 		return fmt.Errorf("failed to append custom student ID: %w", err)
-		// 	}
-		// }
-
-		// for _, classroom := range *exclusiveClassrooms {
-		// 	tx.Model(activity).Association("ExclusiveClassrooms").Append()
-		// }
-
-		r.db.Omit("ExclusiveClassroomList.*").Omit("ExclusiveStudentIDList.*").Create(activity)
+		// Add associate to classroom
+		err := tx.Debug().Model(activity).Omit("ExclusiveClassroomObjects.*").Create(activity).Error
+		if err != nil {
+			return fmt.Errorf("failed to create activity: %w", err)
+		}
 
 		return nil
 	})
@@ -163,12 +155,9 @@ func (r *ActivityRepository) classroomTransform(classroomList []string, schoolID
 	classrooms := make([]*models.Classroom, len(classroomList))
 
 	for i, name := range classroomList {
-		class, room := utils.ClassroomSplit(name)
-
 		classrooms[i] = &models.Classroom{
-			SchoolID: schoolID,
-			Class:    uint(class),
-			Room:     uint(room),
+			SchoolID:  schoolID,
+			Classroom: name,
 		}
 	}
 

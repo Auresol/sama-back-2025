@@ -266,14 +266,14 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /user/activities [get]
 func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
-	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
-	if !ok {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-		return
-	}
+	// claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	// if !ok {
+	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+	// 	return
+	// }
 
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
+	// limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	// offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
 
 	// TODO: Implement the service call to fetch activities related to claims.UserID
 	// This service method would need to query activities where:
@@ -284,11 +284,11 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 	// This will be a more complex query in the repository.
 
 	// Example placeholder for activities:
-	activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
-		return
-	}
+	// activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
+	// if err != nil {
+	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
+	// 	return
+	// }
 
 	// For now, returning a placeholder response
 	ctx.JSON(http.StatusOK, []models.Activity{}) // Return an empty array or mock data

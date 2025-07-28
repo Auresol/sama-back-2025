@@ -6,7 +6,7 @@ import (
 
 // Record represents an activity record, mapped to a PostgreSQL table.
 type Record struct {
-	ID uint `gorm:"primarykey" validate:"required"`
+	ID uint `gorm:"primarykey"`
 
 	ActivityID uint                   `json:"activity_id" validate:"required"`
 	Data       map[string]interface{} `json:"data" gorm:"serializer:json" validate:"required"`

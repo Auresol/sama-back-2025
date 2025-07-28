@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"sama/sama-backend-2025/src/middlewares"
 	"sama/sama-backend-2025/src/models"
@@ -35,15 +36,16 @@ func NewSchoolController(
 
 // CreateSchoolRequest represents the request body for creating a new school.
 type CreateSchoolRequest struct {
-	ThaiName    string   `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยา"`
-	EnglishName string   `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
-	ShortName   string   `json:"short_name" binding:"required" example:"SMK"`
-	Email       *string  `json:"email,omitempty" binding:"email" example:"info@smk.ac.th"`
-	Location    *string  `json:"location,omitempty" example:"Bangkok, Thailand"`
-	Phone       *string  `json:"phone,omitempty" binding:"e164" example:"+66812345678"`
-	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
-	SchoolYear  int      `json:"school_year" binding:"required,gt=0" example:"2568"`
-	Semester    int      `json:"semester" binding:"required,gt=0" example:"1"`
+	ThaiName                string    `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยา"`
+	EnglishName             string    `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
+	ShortName               string    `json:"short_name" binding:"required" example:"SMK"`
+	Email                   *string   `json:"email,omitempty" binding:"email" example:"info@smk.ac.th"`
+	DefaultActivityDeadline time.Time `json:"default_activity_deadline"`
+	Location                *string   `json:"location,omitempty" example:"Bangkok, Thailand"`
+	Phone                   *string   `json:"phone,omitempty" binding:"e164" example:"+66812345678"`
+	Classrooms              []string  `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
+	SchoolYear              int       `json:"school_year" binding:"required,gt=0" example:"2568"`
+	Semester                int       `json:"semester" binding:"required,gt=0" example:"1"`
 }
 
 // UpdateSchoolRequest represents the request body for updating an existing school.
@@ -103,15 +105,16 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 	}
 
 	school := &models.School{
-		ThaiName:    req.ThaiName,
-		EnglishName: req.EnglishName,
-		ShortName:   req.ShortName,
-		Email:       *req.Email,
-		Location:    *req.Location,
-		Phone:       *req.Phone,
-		Classrooms:  req.Classrooms,
-		SchoolYear:  req.SchoolYear,
-		Semester:    req.Semester,
+		ThaiName:                req.ThaiName,
+		EnglishName:             req.EnglishName,
+		ShortName:               req.ShortName,
+		DefaultActivityDeadline: req.DefaultActivityDeadline,
+		Email:                   *req.Email,
+		Location:                *req.Location,
+		Phone:                   *req.Phone,
+		Classrooms:              req.Classrooms,
+		SchoolYear:              req.SchoolYear,
+		Semester:                req.Semester,
 	}
 
 	if err := h.schoolService.CreateSchool(school); err != nil {
@@ -523,7 +526,7 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), limit, offset)
+	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), "", limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return
@@ -579,7 +582,7 @@ func (h *SchoolController) GetStatistic(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), limit, offset)
+	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), "", limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return

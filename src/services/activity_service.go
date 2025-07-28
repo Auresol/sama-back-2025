@@ -82,14 +82,14 @@ func (s *ActivityService) validateActivityData(activity *models.Activity) error 
 // CreateActivity creates a new activity.
 func (s *ActivityService) CreateActivity(activity *models.Activity) error {
 	// Validate input using struct tags
-	if err := s.validator.Struct(activity); err != nil {
-		return fmt.Errorf("validation failed: %w", err)
-	}
+	// if err := s.validator.Struct(activity); err != nil {
+	// 	return fmt.Errorf("validation failed: %w", err)
+	// }
 
 	// Perform custom validations
-	if err := s.validateActivityData(activity); err != nil {
-		return fmt.Errorf("activity data validation failed: %w", err)
-	}
+	// if err := s.validateActivityData(activity); err != nil {
+	// 	return fmt.Errorf("activity data validation failed: %w", err)
+	// }
 
 	// Set default IsActive to true if not set
 	if activity.ID == 0 { // For new creation
@@ -105,8 +105,8 @@ func (s *ActivityService) GetActivityByID(id uint) (*models.Activity, error) {
 }
 
 // GetAllActivities retrieves activities with filtering and pagination.
-func (s *ActivityService) GetAllActivities(ownerID, schoolID uint, schoolYear, semester, limit, offset int) ([]models.Activity, error) {
-	return s.activityRepo.GetAllActivities(ownerID, schoolID, schoolYear, semester, limit, offset)
+func (s *ActivityService) GetAllActivities(ownerID, schoolID uint, limit, offset int) ([]models.Activity, error) {
+	return s.activityRepo.GetAllActivities(ownerID, schoolID, limit, offset)
 }
 
 // UpdateActivity updates an existing activity.
@@ -156,9 +156,4 @@ func (s *ActivityService) UpdateActivity(activity *models.Activity) error {
 // DeleteActivity deletes an activity by its ID.
 func (s *ActivityService) DeleteActivity(id uint) error {
 	return s.activityRepo.DeleteActivity(id)
-}
-
-// GetAllActivities retrieves activities with filtering and pagination.
-func (s *ActivityService) GetAllActivities(ownerID, schoolID uint, schoolYear, semester, limit, offset int) ([]models.Activity, error) {
-	return s.activityRepo.GetAllActivities(ownerID, schoolID, schoolYear, semester, limit, offset)
 }

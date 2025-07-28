@@ -8,7 +8,7 @@ import (
 
 // School represents a school entity, mapped to a PostgreSQL table.
 type School struct {
-	ID uint `json:"id" gorm:"primarykey" validate:"required"`
+	ID uint `json:"id" gorm:"primarykey"`
 
 	ThaiName                string    `json:"thai_name" validate:"required"`
 	EnglishName             string    `json:"english_name" validate:"required"`
@@ -18,11 +18,12 @@ type School struct {
 	Phone                   string    `json:"phone" validate:"e164"` // e164 for phone number validation
 	DefaultActivityDeadline time.Time `json:"default_activity_deadline" validate:"required"`
 
-	Classrooms    []string    `json:"classrooms" gorm:"-:all" validate:"required"`
-	ClassroomList []Classroom `json:"-" gorm:"foreignKey:SchoolID"`
+	Classrooms []string `json:"classrooms" gorm:"-:all" validate:"required"`
 
 	SchoolYear int `json:"school_year" validate:"required,gt=0"` // School year must be positive
 	Semester   int `json:"semester" validate:"required,gt=0"`    // Semester must be positive
+
+	ClassroomObjects []Classroom `json:"-"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -40,7 +41,7 @@ func (School) TableName() string {
 func (s *School) AfterFind(tx *gorm.DB) (err error) {
 	// Ensure ClassroomList is loaded before attempting to flatten
 	// This requires preloading ClassroomList in your repository's Get methods.
-	for _, obj := range s.ClassroomList {
+	for _, obj := range s.ClassroomObjects {
 		s.Classrooms = append(s.Classrooms, obj.Classroom)
 	}
 	return nil

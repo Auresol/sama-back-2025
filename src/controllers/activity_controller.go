@@ -86,15 +86,18 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 	}
 
 	activity := &models.Activity{
-		Name:           req.Name,
-		Template:       req.Template,
-		IsRequired:     req.IsRequired,
-		CoverageType:   req.CoverageType,
-		FinishedUnit:   req.FinishedUnit,
-		FinishedAmount: req.FinishedAmount,
-		UpdateProtocol: req.UpdateProtocol,
-		OwnerID:        claims.UserID, // Set owner from authenticated user
-		IsActive:       true,          // Default to active on creation
+		Name:                req.Name,
+		Template:            req.Template,
+		SchoolID:            claims.SchoolID,
+		IsRequired:          req.IsRequired,
+		CoverageType:        req.CoverageType,
+		FinishedUnit:        req.FinishedUnit,
+		FinishedAmount:      req.FinishedAmount,
+		ExclusiveClassrooms: req.ExclusiveClassrooms,
+		ExclusiveStudentIDs: req.ExclusiveStudentIDs,
+		UpdateProtocol:      req.UpdateProtocol,
+		OwnerID:             claims.UserID, // Set owner from authenticated user
+		IsActive:            true,          // Default to active on creation
 	}
 
 	// Prepare CustomStudentIDs for the service.
@@ -229,8 +232,6 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 
 	ownerID, _ := strconv.ParseUint(ctx.DefaultQuery("owner_id", "0"), 10, 64)
 	schoolID, _ := strconv.ParseUint(ctx.DefaultQuery("school_id", "0"), 10, 64)
-	schoolYear, _ := strconv.Atoi(ctx.DefaultQuery("school_year", "0"))
-	semester, _ := strconv.Atoi(ctx.DefaultQuery("semester", "0"))
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
 
@@ -247,7 +248,7 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 	}
 	// SAMA_CREW has no restrictions on ownerID or schoolID.
 
-	activities, err := c.activityService.GetAllActivities(uint(ownerID), uint(schoolID), schoolYear, semester, limit, offset)
+	activities, err := c.activityService.GetAllActivities(uint(ownerID), uint(schoolID), limit, offset)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve activities: " + err.Error()})
 		return

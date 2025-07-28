@@ -8,9 +8,9 @@ import (
 
 // User represents a user in the system, mapped to a PostgreSQL table.
 type User struct {
-	ID uint `gorm:"primarykey" validate:"required"`
+	ID uint `json:"id" gorm:"primarykey"`
 
-	StudentID         string  `json:"student_id,omitempty"` // Unique index for user_id
+	StudentID         string  `json:"student_id,omitempty"`
 	Role              string  `json:"role" validate:"required,oneof=STD TCH ADMIN SAMA"`
 	Email             string  `json:"email" gorm:"uniqueIndex" validate:"required,email"` // Unique index for email
 	Password          string  `json:"-"`
@@ -21,13 +21,14 @@ type User struct {
 	Language          string  `json:"language" validate:"required"`
 
 	SchoolID  uint    `json:"school_id" validate:"required"`
-	Classroom *string `json:"classroom,omitempty" gorm:"-:all" validate:"classroomregex"`
+	Classroom *string `json:"classroom,omitempty"`
 	Number    *uint   `json:"number,omitempty" validate:"gt=0"`
 
-	ClassroomID    *uint       `json:"-"`
-	ClassroomModel *Classroom  `json:"-" gorm:"foreignKey:ClassroomID"`
-	School         School      `json:"school" gorm:"foreignKey:SchoolID"`
-	Activities     []*Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
+	ClassroomID      *uint       `json:"-"`
+	ClassroomModel   *Classroom  `json:"-" gorm:"foreignKey:ClassroomID"`
+	School           School      `json:"school" gorm:"foreignKey:SchoolID"`
+	Activities       []*Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
+	BookmarkedTacher []*User     `json:"-" gorm:"many2many:user_bookmarks"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

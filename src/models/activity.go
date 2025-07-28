@@ -8,7 +8,7 @@ import (
 
 // Activity represents a type of activity students perform, mapped to a PostgreSQL table.
 type Activity struct {
-	ID uint `json:"id" gorm:"primarykey" validate:"required"`
+	ID uint `json:"id" gorm:"primarykey"`
 
 	SchoolID uint   `json:"school_id" validate:"required"`
 	Name     string `json:"name" validate:"required"`
@@ -18,11 +18,8 @@ type Activity struct {
 	IsRequired   bool   `json:"is_required" validate:"required"`
 	CoverageType string `json:"coverage_type" validate:"required,oneof=ALL JUNIOR SENIOR"`
 
-	ExclusiveClassrooms    []string     `json:"exclusive_classroom" validate:"required" gorm:"-:all"`
-	ExclusiveClassroomList []*Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
-
-	ExclusiveStudentIDs    []uint  `json:"exclusive_student_ids" validate:"required" gorm:"-:all"`
-	ExclusiveStudentIDList []*User `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
+	ExclusiveClassrooms []string `json:"exclusive_classroom" validate:"required" gorm:"-:all"`
+	ExclusiveStudentIDs []uint   `json:"exclusive_student_ids" validate:"required" gorm:"-:all"`
 
 	OwnerID uint `json:"owner_id" gorm:"index" validate:"required,gt=0"` // ID of the creator (User)
 
@@ -32,6 +29,11 @@ type Activity struct {
 	FinishedUnit   string `json:"finished_condition" validate:"required,oneof=TIMES HOURS"`
 	FinishedAmount int    `json:"finished_amount" validate:"required"`
 	UpdateProtocol string `json:"update_protocol,omitempty" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
+
+	School                    School       `json:"school" gorm:"foreignKey:SchoolID"`
+	Owner                     User         `json:"owner" gorm:"foreignKey:OwnerID"`
+	ExclusiveStudentIDObjects []*User      `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
+	ExclusiveClassroomObjects []*Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -48,7 +50,7 @@ func (Activity) TableName() string {
 func (a *Activity) AfterFind(tx *gorm.DB) (err error) {
 	// Ensure ClassroomList is loaded before attempting to flatten
 	// This requires preloading ClassroomList in your repository's Get methods.
-	for _, obj := range a.ExclusiveClassroomList {
+	for _, obj := range a.ExclusiveClassroomObjects {
 		a.ExclusiveClassrooms = append(a.ExclusiveClassrooms, obj.Classroom)
 	}
 	return nil

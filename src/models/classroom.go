@@ -5,10 +5,8 @@ import (
 )
 
 type Classroom struct {
-	ID        uint   `gorm:"primarykey" validate:"required"`
+	ID        uint   `gorm:"primarykey"`
 	SchoolID  uint   `json:"school_id" validate:"required"`
-	Class     uint   `json:"class" validate:"required"`
-	Room      uint   `json:"room" validate:"required"`
 	Classroom string `json:"classroom" validate:"required"`
 
 	School     School      `json:"-"`

@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 
 	"sama/sama-backend-2025/src/models" // Adjust import path
-	"sama/sama-backend-2025/src/utils"
 )
 
 // SchoolRepository handles database operations for the School model.
@@ -33,13 +32,11 @@ func (r *SchoolRepository) CreateSchool(school *models.School) error {
 		// 2. Create associated Classrooms
 		for _, name := range school.Classrooms {
 
-			class, room := utils.ClassroomSplit(name)
-
-			classroom := &models.Classroom{
-				SchoolID: school.ID, // Assign the ID of the newly created school
-				Class:    uint(class),
-				Room:     uint(room),
+			classroom := models.Classroom{
+				SchoolID:  school.ID,
+				Classroom: name,
 			}
+
 			if err := tx.Create(classroom).Error; err != nil {
 				// If a classroom fails to create (e.g., duplicate name for this school),
 				// the transaction will be rolled back.
@@ -128,13 +125,16 @@ func (r *SchoolRepository) UpdateSchool(school *models.School) error {
 
 		for name, status := range classStatus {
 			if status == 1 {
-				if err := createClassroom(tx, school.ID, name); err != nil {
-					return err
+				classroom := models.Classroom{
+					SchoolID:  school.ID,
+					Classroom: name,
 				}
-				continue
-			}
 
-			if status == 2 {
+				if err := tx.Create(classroom).Error; err != nil {
+					return fmt.Errorf("failed to create classroom '%s' for school ID %d: %w", name, school.ID, err)
+				}
+
+			} else if status == 2 {
 				if err := tx.Delete(models.Classroom{}, "school_id = ? AND classroom = ?", school.ID, name); err != nil {
 					return fmt.Errorf("failed to remove classroom '%s' in school id %d: %w", name, school.ID, err)
 				}
@@ -163,21 +163,4 @@ func (r *SchoolRepository) CountSchools() (int64, error) {
 	var count int64
 	err := r.db.Model(&models.School{}).Count(&count).Error
 	return count, err
-}
-
-func createClassroom(tx *gorm.DB, schoolID uint, name string) error {
-	class, room := utils.ClassroomSplit(name)
-
-	classroom := &models.Classroom{
-		SchoolID: schoolID, // Assign the ID of the newly created school
-		Class:    uint(class),
-		Room:     uint(room),
-	}
-	if err := tx.Create(classroom).Error; err != nil {
-		// If a classroom fails to create (e.g., duplicate name for this school),
-		// the transaction will be rolled back.
-		return fmt.Errorf("failed to create classroom '%s' for school ID %d: %w", name, schoolID, err)
-	}
-
-	return nil
 }
