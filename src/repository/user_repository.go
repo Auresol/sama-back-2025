@@ -29,8 +29,8 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 		// 1. Get classroom (if exised)
 		if user.Classroom != nil {
 			classroom := models.Classroom{}
-			if err := tx.Where("classroom = ?", user.Classroom).Find(classroom).Error; err != nil {
-				return fmt.Errorf("failed to get user's classroom: %w", err)
+			if err := tx.Where("school_id = ? AND classroom = ?", user.SchoolID, user.Classroom).Find(&classroom).Error; err != nil {
+				return fmt.Errorf("failed to retrieve user's classroom: %w", err)
 			}
 
 			user.ClassroomID = &classroom.ID
@@ -94,8 +94,25 @@ func (r *UserRepository) GetAllUsers(limit, offset int) ([]models.User, error) {
 
 // UpdateUser updates an existing user's general profile information.
 func (r *UserRepository) UpdateUser(user *models.User) error {
-	// Use Save for full updates or Select/Omit for partial updates
-	return r.db.Save(user).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+
+		// Check if new classroom is valid
+		if user.Classroom != nil {
+			classroom := models.Classroom{}
+			if err := tx.Where("school_id = ? AND classroom = ?", user.SchoolID, user.Classroom).Find(&classroom).Error; err != nil {
+				return fmt.Errorf("failed to retrieve user's classroom: %w", err)
+			}
+
+			user.ClassroomID = &classroom.ID
+		}
+
+		// Use Save for full updates
+		if err := tx.Save(user).Error; err != nil {
+			return fmt.Errorf("failed to update user: %w", err)
+		}
+
+		return nil
+	})
 }
 
 // UpdateUserPassword updates a user's password.

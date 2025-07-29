@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"gorm.io/gorm"
 
@@ -17,41 +18,35 @@ type SchoolRepository struct {
 // NewSchoolRepository creates a new instance of SchoolRepository.
 func NewSchoolRepository() *SchoolRepository {
 	return &SchoolRepository{
-		db: GetDB(), // Get the GORM DB instance from the global GetDB function
+		db: GetDB(),
 	}
 }
 
 // CreateSchool creates a new school record and its associated classrooms in a transaction.
 func (r *SchoolRepository) CreateSchool(school *models.School) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// 1. Create the School
+
+		// Create new classroom object according to input
+		for _, name := range school.Classrooms {
+			school.ClassroomObjects = append(school.ClassroomObjects, models.Classroom{
+				SchoolID:  school.ID,
+				Classroom: name,
+			})
+		}
+
+		// Create both school and classroom (associate mode)
 		if err := tx.Create(school).Error; err != nil {
 			return fmt.Errorf("failed to create school: %w", err)
 		}
 
-		// 2. Create associated Classrooms
-		for _, name := range school.Classrooms {
-
-			classroom := models.Classroom{
-				SchoolID:  school.ID,
-				Classroom: name,
-			}
-
-			if err := tx.Create(classroom).Error; err != nil {
-				// If a classroom fails to create (e.g., duplicate name for this school),
-				// the transaction will be rolled back.
-				return fmt.Errorf("failed to create classroom '%s' for school ID %d: %w", name, school.ID, err)
-			}
-		}
-
-		return nil // Return nil to commit the transaction
+		return nil
 	})
 }
 
 // GetSchoolByID retrieves a school by its primary ID.
 func (r *SchoolRepository) GetSchoolByID(id uint) (*models.School, error) {
 	var school models.School
-	err := r.db.Preload("ClassroomList").First(&school, id).Error
+	err := r.db.Preload("ClassroomObjects").First(&school, id).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -65,7 +60,7 @@ func (r *SchoolRepository) GetSchoolByID(id uint) (*models.School, error) {
 // GetSchoolByEmail retrieves a school by its unique email.
 func (r *SchoolRepository) GetSchoolByEmail(email string) (*models.School, error) {
 	var school models.School
-	err := r.db.Preload("ClassroomList").Where("email = ?", email).First(&school).Error
+	err := r.db.Preload("ClassroomObjects").Where("email = ?", email).First(&school).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("school with email %s not found", email)
@@ -78,7 +73,7 @@ func (r *SchoolRepository) GetSchoolByEmail(email string) (*models.School, error
 // GetSchoolByShortName retrieves a school by its unique short name.
 func (r *SchoolRepository) GetSchoolByShortName(shortName string) (*models.School, error) {
 	var school models.School
-	err := r.db.Preload("ClassroomList").Where("short_name = ?", shortName).First(&school).Error
+	err := r.db.Preload("ClassroomObjects").Where("short_name = ?", shortName).First(&school).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("school with short name %s not found", shortName)
@@ -91,58 +86,83 @@ func (r *SchoolRepository) GetSchoolByShortName(shortName string) (*models.Schoo
 // GetAllSchools retrieves all schools with pagination.
 func (r *SchoolRepository) GetAllSchools(limit, offset int) ([]models.School, error) {
 	var schools []models.School
-	err := r.db.Preload("ClassroomList").Limit(limit).Offset(offset).Preload("ClassroomList").Find(&schools).Error
+	err := r.db.Preload("ClassroomObjects").Limit(limit).Offset(offset).Find(&schools).Error
 
 	return schools, err
 }
 
 // UpdateSchool updates an existing school record.
 func (r *SchoolRepository) UpdateSchool(school *models.School) error {
-	// Use Save for full updates or Select/Omit for partial updates
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// 1. Create the School
-		oldSchool := models.School{}
-		if err := tx.Preload("ClassroomList").Find(oldSchool).Error; err != nil {
-			return fmt.Errorf("failed to create school with id %d: %w", school.ID, err)
+
+		// -- Classroom update --
+		// Use merge sort combined algorithm
+		// Associate doesn't automatically delete (or update if no id provided). Thus, explicit algorithm is needed
+
+		// Sort input classroom string
+		sort.Slice(school.Classrooms, func(i2, j2 int) bool {
+			return school.Classrooms[i2] < school.Classrooms[j2]
+		})
+
+		// Find all existed classroom
+		var existedClassrooms []models.Classroom
+		if err := tx.Select("id", "school_id", "classroom").Where("school_id = ?", school.ID).Find(&existedClassrooms).Error; err != nil {
+			return fmt.Errorf("failed to retrieve school's classroom: %w", err)
 		}
 
-		// Check classroom list
-		// 1: existed in incoming school update request only, add new classroom
-		// 2: already existed in school but not request, remove classroom
-		// 3: existed in both, do nothing
-		classStatus := make(map[string]uint8)
-		for _, sc := range school.Classrooms {
-			classStatus[sc] = 1
-		}
+		// Start of classroom update
+		var i, j int
 
-		for _, osc := range oldSchool.Classrooms {
-			if classStatus[osc] == 1 {
-				classStatus[osc] = 3
-				continue
-			}
-			classStatus[osc] = 2
-		}
+		// Loop until both slice run out of classroom to operate on
+		for i < len(school.Classrooms) || j < len(existedClassrooms) {
 
-		for name, status := range classStatus {
-			if status == 1 {
-				classroom := models.Classroom{
+			if i >= len(school.Classrooms) || (j < len(existedClassrooms) && school.Classrooms[i] > existedClassrooms[j].Classroom) {
+
+				// Classroom existed, but no input. So we delete it
+				if err := tx.Delete(&existedClassrooms[j]).Error; err != nil {
+					return fmt.Errorf("failed to delete school's classroom '%s': %w", existedClassrooms[j].Classroom, err)
+				}
+				j++
+
+			} else if j >= len(existedClassrooms) || (i < len(existedClassrooms) && school.Classrooms[i] < existedClassrooms[j].Classroom) {
+
+				// Classroom doesn't existed, creating new one
+				var deletedClassroom models.Classroom
+
+				// Find soft deleted classroom
+				tx.Unscoped().Where("school_id = ? AND classroom = ?", school.ID, school.Classrooms[i]).First(&deletedClassroom)
+
+				// Restore classroom if it benn soft deleted
+				if deletedClassroom.ID != 0 {
+					if err := tx.Unscoped().Model(&deletedClassroom).Update("deleted_at", nil).Error; err != nil {
+						return fmt.Errorf("failed to restore school's classroom '%s': %w", school.Classrooms[i], err)
+					}
+					i++
+					continue
+				}
+
+				// Create classroom
+				if err := tx.Create(&models.Classroom{
 					SchoolID:  school.ID,
-					Classroom: name,
+					Classroom: school.Classrooms[i],
+				}).Error; err != nil {
+					return fmt.Errorf("failed to append school's classroom '%s': %w", school.Classrooms[i], err)
 				}
-
-				if err := tx.Create(classroom).Error; err != nil {
-					return fmt.Errorf("failed to create classroom '%s' for school ID %d: %w", name, school.ID, err)
-				}
-
-			} else if status == 2 {
-				if err := tx.Delete(models.Classroom{}, "school_id = ? AND classroom = ?", school.ID, name); err != nil {
-					return fmt.Errorf("failed to remove classroom '%s' in school id %d: %w", name, school.ID, err)
-				}
+				i++
+			} else {
+				// Both contain the same classroom, do nothing
+				i++
+				j++
 			}
-
 		}
 
-		return nil // Return nil to commit the transaction
+		// -- end of classroom update --
+
+		if err := tx.Omit("ClassroomObjects").Updates(school).Error; err != nil {
+			return fmt.Errorf("failed to update school: %w", err)
+		}
+
+		return nil
 	})
 }
 

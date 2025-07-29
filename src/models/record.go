@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Record represents an activity record, mapped to a PostgreSQL table.
@@ -28,9 +30,9 @@ type Record struct {
 	Student  User     `json:"-"`
 	Teacher  User     `json:"-"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 // StatusUpdates is a custom type for handling []StatusUpdateTime as JSONB.

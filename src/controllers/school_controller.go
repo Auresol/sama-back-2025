@@ -50,13 +50,14 @@ type CreateSchoolRequest struct {
 
 // UpdateSchoolRequest represents the request body for updating an existing school.
 type UpdateSchoolRequest struct {
-	ThaiName    string   `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยาใหม่"`
-	EnglishName string   `json:"english_name" binding:"required" example:"New Samakkee Wittaya School"`
-	ShortName   string   `json:"short_name" binding:"required" example:"NSMK"`
-	Email       *string  `json:"email,omitempty" binding:"omitempty,email" example:"new_info@smk.ac.th"`
-	Location    *string  `json:"location,omitempty" binding:"omitempty" example:"Nonthaburi, Thailand"`
-	Phone       *string  `json:"phone,omitempty" binding:"omitempty,e164" example:"+66923456789"`
-	Classrooms  []string `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
+	ThaiName                string    `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยา"`
+	EnglishName             string    `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
+	ShortName               string    `json:"short_name" binding:"required" example:"SMK"`
+	Email                   *string   `json:"email,omitempty" binding:"email" example:"info@smk.ac.th"`
+	DefaultActivityDeadline time.Time `json:"default_activity_deadline"`
+	Location                *string   `json:"location,omitempty" example:"Bangkok, Thailand"`
+	Phone                   *string   `json:"phone,omitempty" binding:"e164" example:"+66812345678"`
+	Classrooms              []string  `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
 }
 
 // CreateSchool handles the creation of a new school.
@@ -109,9 +110,9 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 		EnglishName:             req.EnglishName,
 		ShortName:               req.ShortName,
 		DefaultActivityDeadline: req.DefaultActivityDeadline,
-		Email:                   *req.Email,
-		Location:                *req.Location,
-		Phone:                   *req.Phone,
+		Email:                   req.Email,
+		Location:                req.Location,
+		Phone:                   req.Phone,
 		Classrooms:              req.Classrooms,
 		SchoolYear:              req.SchoolYear,
 		Semester:                req.Semester,
@@ -247,7 +248,7 @@ func (h *SchoolController) UpdateSchool(c *gin.Context) {
 	// Authorization:
 	// SAMA_CREW can update any school.
 	// ADMIN can only update their own school.
-	if claims.Role != "SAMA_CREW" && claims.Role != "ADMIN" {
+	if claims.Role != "SAMA" && claims.Role != "ADMIN" {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 		return
 	}
@@ -275,30 +276,16 @@ func (h *SchoolController) UpdateSchool(c *gin.Context) {
 
 	// Apply updates from request to the fetched school model
 	// Only update fields that are provided in the request
-	if req.ThaiName != "" {
-		schoolToUpdate.ThaiName = req.ThaiName
-	}
-	if req.EnglishName != "" {
-		schoolToUpdate.EnglishName = req.EnglishName
-	}
-	if req.ShortName != "" {
-		schoolToUpdate.ShortName = req.ShortName
-	}
-	// if req.Email != "" {
-	// 	schoolToUpdate.Email = req.Email
-	// }
-	// if req.Location != "" {
-	// 	schoolToUpdate.Location = req.Location
-	// }
-	// if req.Phone != "" {
-	// 	schoolToUpdate.Phone = req.Phone
-	// }
-	// if req.SchoolYear != 0 { // Assuming 0 means not provided for int
-	// 	schoolToUpdate.SchoolYear = req.SchoolYear
-	// }
-	// if req.Semester != 0 { // Assuming 0 means not provided for int
-	// 	schoolToUpdate.Semester = req.Semester
-	// }
+	schoolToUpdate.ThaiName = req.ThaiName
+	schoolToUpdate.EnglishName = req.EnglishName
+	schoolToUpdate.ShortName = req.ShortName
+	schoolToUpdate.DefaultActivityDeadline = req.DefaultActivityDeadline
+	schoolToUpdate.Email = req.Email
+	schoolToUpdate.Location = req.Location
+	schoolToUpdate.Phone = req.Phone
+	schoolToUpdate.Classrooms = req.Classrooms
+
+	fmt.Println(schoolToUpdate)
 
 	if err := h.schoolService.UpdateSchool(schoolToUpdate); err != nil {
 		if err.Error() == "new email already exists for another school" || err.Error() == "new short name already exists for another school" {

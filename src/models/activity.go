@@ -30,14 +30,14 @@ type Activity struct {
 	FinishedAmount int    `json:"finished_amount" validate:"required"`
 	UpdateProtocol string `json:"update_protocol,omitempty" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
 
-	School                    School       `json:"school" gorm:"foreignKey:SchoolID"`
-	Owner                     User         `json:"owner" gorm:"foreignKey:OwnerID"`
-	ExclusiveStudentIDObjects []*User      `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
+	School                    School       `json:"-" gorm:"foreignKey:SchoolID"`
+	Owner                     User         `json:"owner,omitempty" gorm:"foreignKey:OwnerID"`
+	ExclusiveStudentObjects   []*User      `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 	ExclusiveClassroomObjects []*Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 // TableName specifies the table name for the Activity model.

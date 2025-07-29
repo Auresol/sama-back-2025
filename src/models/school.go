@@ -13,9 +13,9 @@ type School struct {
 	ThaiName                string    `json:"thai_name" validate:"required"`
 	EnglishName             string    `json:"english_name" validate:"required"`
 	ShortName               string    `json:"short_name" gorm:"uniqueIndex" validate:"required"` // Added unique index for short_name
-	Email                   string    `json:"email,omitempty" validate:"email"`
-	Location                string    `json:"location,omitempty"`
-	Phone                   string    `json:"phone" validate:"e164"` // e164 for phone number validation
+	Email                   *string   `json:"email,omitempty" validate:"email"`
+	Location                *string   `json:"location,omitempty"`
+	Phone                   *string   `json:"phone,omitempty" validate:"e164"` // e164 for phone number validation
 	DefaultActivityDeadline time.Time `json:"default_activity_deadline" validate:"required"`
 
 	Classrooms []string `json:"classrooms" gorm:"-:all" validate:"required"`
@@ -25,9 +25,9 @@ type School struct {
 
 	ClassroomObjects []Classroom `json:"-"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 // TableName specifies the table name for the School model.

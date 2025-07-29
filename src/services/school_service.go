@@ -34,7 +34,7 @@ func (s *SchoolService) CreateSchool(school *models.School) error {
 	}
 
 	// Check if a school with this email already exists
-	_, err := s.schoolRepo.GetSchoolByEmail(school.Email)
+	_, err := s.schoolRepo.GetSchoolByEmail(*school.Email)
 	if err == nil {
 		return errors.New("school with this email already exists")
 	}
@@ -88,11 +88,11 @@ func (s *SchoolService) UpdateSchool(school *models.School) error {
 	existingSchool.ThaiName = school.ThaiName
 	existingSchool.EnglishName = school.EnglishName
 	existingSchool.ShortName = school.ShortName
+	existingSchool.DefaultActivityDeadline = school.DefaultActivityDeadline
 	existingSchool.Email = school.Email
 	existingSchool.Location = school.Location
 	existingSchool.Phone = school.Phone
-	existingSchool.SchoolYear = school.SchoolYear
-	existingSchool.Semester = school.Semester
+	existingSchool.Classrooms = school.Classrooms
 
 	// Validate the updated existingSchool struct before saving
 	if err := s.validator.Struct(existingSchool); err != nil {
@@ -101,7 +101,7 @@ func (s *SchoolService) UpdateSchool(school *models.School) error {
 
 	// Check for uniqueness if email or short name is changed
 	if existingSchool.Email != school.Email {
-		_, err = s.schoolRepo.GetSchoolByEmail(school.Email)
+		_, err = s.schoolRepo.GetSchoolByEmail(*school.Email)
 		if err == nil {
 			return errors.New("new email already exists for another school")
 		}
@@ -119,7 +119,7 @@ func (s *SchoolService) UpdateSchool(school *models.School) error {
 		}
 	}
 
-	return s.schoolRepo.UpdateSchool(existingSchool)
+	return s.schoolRepo.UpdateSchool(school)
 }
 
 // DeleteSchool deletes a school by its ID.

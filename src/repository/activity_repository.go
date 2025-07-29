@@ -30,17 +30,13 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 		activity.ExclusiveClassroomObjects = make([]*models.Classroom, len(activity.ExclusiveClassrooms))
 		// Get classroom's id first
 		for i, name := range activity.ExclusiveClassrooms {
-			if err := tx.Where("school_id = ? AND classroom = ?", activity.SchoolID, name).First(&activity.ExclusiveClassroomObjects[i]).Error; err != nil {
+			if err := tx.Select("id").Where("school_id = ? AND classroom = ?", activity.SchoolID, name).First(&activity.ExclusiveClassroomObjects[i]).Error; err != nil {
 				return fmt.Errorf("failed to find classroom '%s': %w", name, err)
 			}
 		}
 
-		for _, class := range activity.ExclusiveClassroomObjects {
-			fmt.Println(class)
-		}
-
 		// Add associate to classroom
-		err := tx.Debug().Model(activity).Omit("ExclusiveClassroomObjects.*").Create(activity).Error
+		err := tx.Model(activity).Omit("ExclusiveClassroomObjects.*").Create(activity).Error
 		if err != nil {
 			return fmt.Errorf("failed to create activity: %w", err)
 		}
@@ -52,7 +48,7 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 // GetActivityByID retrieves an activity by its ID, preloading custom student IDs.
 func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) {
 	var activity models.Activity
-	err := r.db.Preload("CustomStudentIDs").First(&activity, id).Error
+	err := r.db.Preload("ExclusiveStudentIDs").Preload("ExclusiveClassroomObjects").First(&activity, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("activity with ID %d not found", id)

@@ -2,19 +2,21 @@ package models
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Classroom struct {
 	ID        uint   `gorm:"primarykey"`
-	SchoolID  uint   `json:"school_id" validate:"required"`
-	Classroom string `json:"classroom" validate:"required"`
+	SchoolID  uint   `json:"school_id" gorm:"uniqueIndex:idx_classroom,priority:1" validate:"required"`
+	Classroom string `json:"classroom" gorm:"uniqueIndex:idx_classroom,priority:2" validate:"required"`
 
 	School     School      `json:"-"`
 	Activities []*Activity `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 // TableName specifies the table name for the School model.

@@ -20,19 +20,20 @@ type User struct {
 	ProfilePictureURL *string `json:"profile_picture_url,omitempty"`
 	Language          string  `json:"language" validate:"required"`
 
-	SchoolID  uint    `json:"school_id" validate:"required"`
-	Classroom *string `json:"classroom,omitempty"`
-	Number    *uint   `json:"number,omitempty" validate:"gt=0"`
+	SchoolID          uint    `json:"school_id" validate:"required"`
+	Classroom         *string `json:"classroom,omitempty"`
+	Number            *uint   `json:"number,omitempty" validate:"gt=0"`
+	BookmarkedUserIDs []uint  `json:"bookmarked_user_ids,omitempty" gorm:"-:all"`
 
-	ClassroomID      *uint       `json:"-"`
-	ClassroomModel   *Classroom  `json:"-" gorm:"foreignKey:ClassroomID"`
-	School           School      `json:"school" gorm:"foreignKey:SchoolID"`
-	Activities       []*Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
-	BookmarkedTacher []*User     `json:"-" gorm:"many2many:user_bookmarks"`
+	ClassroomID    *uint       `json:"-"`
+	ClassroomModel *Classroom  `json:"-" gorm:"foreignKey:ClassroomID"`
+	School         School      `json:"school" gorm:"foreignKey:SchoolID"`
+	Activities     []*Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
+	BookmarkedUser []*User     `json:"-" gorm:"many2many:user_bookmark"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	DeletedAt time.Time `json:"deleted_at" gorm:"index"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
 // TableName specifies the table name for User model
