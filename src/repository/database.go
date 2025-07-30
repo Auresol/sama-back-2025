@@ -51,6 +51,7 @@ func AutoMigrate() error {
 	DB.AutoMigrate(&models.School{})
 	DB.AutoMigrate(&models.Classroom{})
 	DB.AutoMigrate(&models.Activity{})
+	DB.AutoMigrate(&models.Record{})
 	return nil
 }
 

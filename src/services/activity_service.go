@@ -3,7 +3,6 @@ package services
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
@@ -41,27 +40,6 @@ func (s *ActivityService) validateActivityData(activity *models.Activity) error 
 	if !utils.Contains(models.ACTIVITY_UPDATE_PROTOCOL_ENUM, activity.UpdateProtocol) {
 		return fmt.Errorf("invalid UpdateProtocol: %s", activity.UpdateProtocol)
 	}
-
-	// // Conditional validation for CustomStudentIDs
-	// if activity.CoverageType == "CUSTOM" {
-	// 	if len(activity.CustomStudentIDs) == 0 {
-	// 		return errors.New("CustomStudentIDs are required when CoverageType is CUSTOM")
-	// 	}
-	// 	// Validate if all CustomStudentIDs refer to existing users
-	// 	for _, student := range activity.CustomStudentIDs {
-	// 		_, err := s.userRepo.GetUserByID(student.ID)
-	// 		if err != nil {
-	// 			if errors.Is(err, gorm.ErrRecordNotFound) {
-	// 				return fmt.Errorf("custom student ID %d not found", student.ID)
-	// 			}
-	// 			return fmt.Errorf("failed to validate custom student ID %d: %w", student.ID, err)
-	// 		}
-	// 	}
-	// } else if activity.CoverageType == "REQUIRE" {
-	// 	if len(activity.CustomStudentIDs) > 0 {
-	// 		return errors.New("CustomStudentIDs must be empty when CoverageType is REQUIRE")
-	// 	}
-	// }
 
 	// Validate OwnerID exists
 	owner, err := s.userRepo.GetUserByID(activity.OwnerID)
@@ -112,45 +90,33 @@ func (s *ActivityService) GetAllActivities(ownerID, schoolID uint, limit, offset
 // UpdateActivity updates an existing activity.
 func (s *ActivityService) UpdateActivity(activity *models.Activity) error {
 	// Fetch existing activity to ensure it exists and preserve original fields not being updated.
-	existingActivity, err := s.activityRepo.GetActivityByID(activity.ID)
+	_, err := s.activityRepo.GetActivityByID(activity.ID)
 	if err != nil {
 		return fmt.Errorf("activity not found for update: %w", err)
 	}
 
-	// Apply updates from the input 'activity' to the 'existingActivity'.
-	// Only update fields that are explicitly provided or allowed to be changed.
-	// Note: GORM's Save method will update all fields, so careful assignment is needed.
-	// Better to update specific fields or use Select() in repo if partial update is preferred.
+	// // Validate the updated existingActivity struct (including its tags)
+	// if err := s.validator.Struct(existingActivity); err != nil {
+	// 	return fmt.Errorf("validation failed for updated activity: %w", err)
+	// }
 
-	// For simplicity, I'll copy fields from the input `activity` to `existingActivity`
-	// then validate and save the `existingActivity`.
-	existingActivity.Name = activity.Name
-	existingActivity.Template = activity.Template
-	existingActivity.CoverageType = activity.CoverageType
-	existingActivity.IsActive = activity.IsActive
-	existingActivity.FinishedUnit = activity.FinishedUnit
-	existingActivity.FinishedAmount = activity.FinishedAmount
-	existingActivity.UpdateProtocol = activity.UpdateProtocol
+	// // Perform custom validations again for the updated data
+	// if err := s.validateActivityData(existingActivity); err != nil {
+	// 	return fmt.Errorf("updated activity data validation failed: %w", err)
+	// }
 
-	// Handle InactiveDate logic
-	if !existingActivity.IsActive && existingActivity.Deadline == nil {
-		now := time.Now()
-		existingActivity.Deadline = &now
-	} else if existingActivity.IsActive && existingActivity.Deadline != nil {
-		existingActivity.Deadline = nil // Clear InactiveDate if re-activated
+	return s.activityRepo.UpdateActivity(activity)
+}
+
+func (r *ActivityService) GetAssignedActivitiesByUserID(userID, schoolID uint, limit, offset int) ([]models.ActivityWithStatistic, error) {
+
+	fmt.Printf("Debug: s.activityRepo is: %v\n", r.activityRepo)
+	activities, err := r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve activities: %w", err)
 	}
 
-	// Validate the updated existingActivity struct (including its tags)
-	if err := s.validator.Struct(existingActivity); err != nil {
-		return fmt.Errorf("validation failed for updated activity: %w", err)
-	}
-
-	// Perform custom validations again for the updated data
-	if err := s.validateActivityData(existingActivity); err != nil {
-		return fmt.Errorf("updated activity data validation failed: %w", err)
-	}
-
-	return s.activityRepo.UpdateActivity(existingActivity)
+	return activities, nil
 }
 
 // DeleteActivity deletes an activity by its ID.

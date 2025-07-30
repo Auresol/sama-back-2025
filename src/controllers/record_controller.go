@@ -93,8 +93,6 @@ func (c *RecordController) CreateRecord(ctx *gin.Context) {
 	record := &models.Record{
 		ActivityID: req.ActivityID, // Assuming this is uint
 		StudentID:  claims.UserID,
-		SchoolYear: 1,
-		Semester:   1,
 		Amount:     req.Amount,
 		Status:     "CREATED",
 	}
@@ -110,7 +108,7 @@ func (c *RecordController) CreateRecord(ctx *gin.Context) {
 	// }
 
 	// Pass the authenticated user's ID for status log
-	if err := c.recordService.CreateRecord(record, claims.UserID); err != nil {
+	if err := c.recordService.CreateRecord(record, claims.SchoolID, claims.UserID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to create record: " + err.Error()})
 		return
 	}
@@ -133,7 +131,7 @@ func (c *RecordController) CreateRecord(ctx *gin.Context) {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /record/{id} [get]
 func (c *RecordController) GetRecordByID(ctx *gin.Context) {
-	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	_, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
 		return
@@ -160,23 +158,23 @@ func (c *RecordController) GetRecordByID(ctx *gin.Context) {
 	// 2. Student can view their own records.
 	// 3. Teacher can view records where they are the assigned teacher, or records for students in their school.
 	// 4. Admin can view records for their school.
-	if claims.Role != "SAMA_CREW" {
-		isAuthorized := false
-		// if claims.Role == "STD" && claims.UserID == record.StudentID {
-		// 	isAuthorized = true
-		// } else if claims.Role == "TCH" && (claims.UserID == record.TeacherID || claims.SchoolID == record.SchoolID) {
-		// 	// Teacher can see records they are assigned to, or records for students in their school
-		// 	isAuthorized = true
-		// }
-		// } else if claims.Role == "ADMIN" && claims.SchoolID == record.SchoolID {
-		// 	isAuthorized = true
-		// }
+	// if claims.Role != "SAMA_CREW" {
+	// 	isAuthorized := false
+	// 	// if claims.Role == "STD" && claims.UserID == record.StudentID {
+	// 	// 	isAuthorized = true
+	// 	// } else if claims.Role == "TCH" && (claims.UserID == record.TeacherID || claims.SchoolID == record.SchoolID) {
+	// 	// 	// Teacher can see records they are assigned to, or records for students in their school
+	// 	// 	isAuthorized = true
+	// 	// }
+	// 	// } else if claims.Role == "ADMIN" && claims.SchoolID == record.SchoolID {
+	// 	// 	isAuthorized = true
+	// 	// }
 
-		if !isAuthorized {
-			ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to view this record."})
-			return
-		}
-	}
+	// 	if !isAuthorized {
+	// 		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to view this record."})
+	// 		return
+	// 	}
+	// }
 
 	ctx.JSON(http.StatusOK, record)
 }
@@ -563,7 +561,7 @@ func (c *RecordController) ApproveRecord(ctx *gin.Context) {
 	isAuthorized := false
 	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
 		isAuthorized = true
-	} else if claims.Role == "TCH" && claims.UserID == existingRecord.TeacherID && existingRecord.Status == "SENDED" {
+	} else if claims.Role == "TCH" && claims.UserID == *existingRecord.TeacherID && existingRecord.Status == "SENDED" {
 		isAuthorized = true
 	}
 
@@ -644,7 +642,7 @@ func (c *RecordController) RejectRecord(ctx *gin.Context) {
 	isAuthorized := false
 	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
 		isAuthorized = true
-	} else if claims.Role == "TCH" && claims.UserID == existingRecord.TeacherID && existingRecord.Status == "SENDED" {
+	} else if claims.Role == "TCH" && claims.UserID == *existingRecord.TeacherID && existingRecord.Status == "SENDED" {
 		isAuthorized = true
 	}
 

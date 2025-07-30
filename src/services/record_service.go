@@ -59,7 +59,7 @@ func (s *RecordService) validateRecordData(record *models.Record) error {
 	}
 
 	// Validate TeacherID
-	_, err = s.userRepo.GetUserByID(record.TeacherID)
+	_, err = s.userRepo.GetUserByID(*record.TeacherID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("teacher with ID %d not found", record.TeacherID)
@@ -82,16 +82,34 @@ func (s *RecordService) validateRecordData(record *models.Record) error {
 }
 
 // CreateRecord creates a new record after validation.
-func (s *RecordService) CreateRecord(record *models.Record, createdByUserID uint) error {
-	// Validate input using struct tags
-	if err := s.validator.Struct(record); err != nil {
-		return fmt.Errorf("validation failed: %w", err)
+func (s *RecordService) CreateRecord(record *models.Record, schoolID uint, createdByUserID uint) error {
+
+	activity, err := s.activityRepo.GetActivityByID(record.ActivityID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve school with id %d: %w", schoolID, err)
 	}
 
-	// Perform custom validations including FK checks
-	if err := s.validateRecordData(record); err != nil {
-		return fmt.Errorf("record data validation failed: %w", err)
+	if activity.SchoolID != schoolID {
+		return fmt.Errorf("school id in activity and school id in your token mismatch")
 	}
+
+	school, err := s.schoolRepo.GetSchoolByID(schoolID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve school with id %d: %w", schoolID, err)
+	}
+
+	record.Semester = school.Semester
+	record.SchoolYear = school.SchoolYear
+
+	// Validate input using struct tags
+	// if err := s.validator.Struct(record); err != nil {
+	// 	return fmt.Errorf("validation failed: %w", err)
+	// }
+
+	// // Perform custom validations including FK checks
+	// if err := s.validateRecordData(record); err != nil {
+	// 	return fmt.Errorf("record data validation failed: %w", err)
+	// }
 
 	// Initialize StatusLogs with the initial status
 	record.StatusLogs = append(record.StatusLogs, models.StatusHistory{
@@ -160,9 +178,9 @@ func (s *RecordService) UpdateRecord(record *models.Record, updatedByUserID uint
 	if record.StudentID != 0 {
 		existingRecord.StudentID = record.StudentID
 	}
-	if record.TeacherID != 0 {
-		existingRecord.TeacherID = record.TeacherID
-	}
+	// if record.TeacherID != 0 {
+	// 	existingRecord.TeacherID = record.TeacherID
+	// }
 	if record.SchoolYear != 0 {
 		existingRecord.SchoolYear = record.SchoolYear
 	}

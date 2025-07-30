@@ -35,7 +35,7 @@ func SetupRoutes() *gin.Engine {
 
 	// Initialize handlers
 	authController := controllers.NewAuthController(userService, validate)
-	userController := controllers.NewUserController(userService, validate)
+	userController := controllers.NewUserController(userService, activityService, validate)
 	schoolController := controllers.NewSchoolController(schoolService, userService, validate)
 	activityController := controllers.NewActivityController(activityService, validate)
 	recordController := controllers.NewRecordController(recordService)
@@ -64,11 +64,11 @@ func SetupRoutes() *gin.Engine {
 	authRoutes.Use(middlewares.Authmiddlewares(jwtSecret))
 	{
 		authRoutes.GET("/me", userController.GetMyProfile)
-		authRoutes.GET("/users/:id", userController.GetUserByID)
-		authRoutes.PUT("/users/:id", userController.UpdateUserProfile)
-		authRoutes.DELETE("/users/:id", userController.DeleteUser)
-		authRoutes.GET("/users/activities", userController.GetAssignedActivities)
-		authRoutes.GET("/users/records", userController.GetRelatedRecords) // require pagination
+		authRoutes.GET("/user/:id", userController.GetUserByID)
+		authRoutes.PUT("/user/:id", userController.UpdateUserProfile)
+		authRoutes.DELETE("/user/:id", userController.DeleteUser)
+		authRoutes.GET("/user/activities", userController.GetAssignedActivities)
+		authRoutes.GET("/user/records", userController.GetRelatedRecords) // require pagination
 
 		authRoutes.GET("/schools", schoolController.GetAllSchools)
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)

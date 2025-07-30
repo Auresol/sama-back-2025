@@ -36,6 +36,7 @@ type CreateActivityRequest struct {
 	CoverageType        string                 `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
 	ExclusiveClassrooms []string               `json:"exclusive_classrooms"  binding:"required" example:"1/1"`
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
+	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
 	FinishedAmount      int                    `json:"finished_amount" binding:"required,gt=0" example:"10"` // Must be positive
 	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
@@ -43,13 +44,16 @@ type CreateActivityRequest struct {
 
 // UpdateActivityRequest defines the request body for updating an activity.
 type UpdateActivityRequest struct {
-	Name             string                 `json:"activity_name" binding:"required" example:"School Cleanup"`
-	Template         map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
-	CoverageType     string                 `json:"coverage_type" binding:"required,oneof=REQUIRE CUSTOM" example:"REQUIRE"`
-	CustomStudentIDs []uint                 `json:"custom_student_ids" binding:"required" example:"101"` // Provide empty array to clear
-	IsActive         bool                   `json:"is_active" binding:"required" example:"true"`
-	FinishedAmount   int                    `json:"finished_amount" binding:"required"`
-	UpdateProtocol   string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"IGNORE_PAST_RECORDS"`
+	Name                string                 `json:"name" binding:"required" example:"School Cleanup Drive"`
+	Template            map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
+	IsRequired          bool                   `json:"is_required" binding:"required" example:"true"`
+	CoverageType        string                 `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
+	ExclusiveClassrooms []string               `json:"exclusive_classrooms"  binding:"required" example:"1/1"`
+	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
+	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
+	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
+	FinishedAmount      int                    `json:"finished_amount" binding:"required,gt=0" example:"10"` // Must be positive
+	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }
 
 // CreateActivity handles creating a new activity.
@@ -297,7 +301,7 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 	}
 
 	// Authorization: Only owner or SAMA_CREW can update
-	if claims.Role != "SAMA_CREW" && claims.UserID != existingActivity.OwnerID {
+	if claims.Role != "SAMA" && claims.UserID != existingActivity.OwnerID {
 		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: You are not authorized to update this activity"})
 		return
 	}
@@ -308,66 +312,23 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 		return
 	}
 
-	// Create a new models.Activity and populate fields from request
-	// This helps with GORM's .Save() to only update provided fields if you load the existing
-	// and then update specific fields. Or, pass the new values to the service.
-	activityToUpdate := &models.Activity{ID: uint(id)} // Ensure ID is set
-
-	// Manually map fields from request to activityToUpdate, respecting omitempty
-	if req.Name != "" {
-		activityToUpdate.Name = req.Name
-	} else {
-		activityToUpdate.Name = existingActivity.Name
-	}
-	if req.Template != nil {
-		activityToUpdate.Template = req.Template
-	} else {
-		activityToUpdate.Template = existingActivity.Template
-	}
-	if req.CoverageType != "" {
-		activityToUpdate.CoverageType = req.CoverageType
-	} else {
-		activityToUpdate.CoverageType = existingActivity.CoverageType
-	}
-	// For CustomStudentIDs, handle explicitly:
-	if req.CustomStudentIDs != nil { // if CustomStudentIDs is provided in the request
-		// if req.CoverageType == "CUSTOM" { // if CoverageType is specified as CUSTOM
-		// 	for _, studentID := range req.CustomStudentIDs {
-		// 		activityToUpdate.CustomStudentIDs = append(activityToUpdate.CustomStudentIDs, models.User{ID: studentID})
-		// 	}
-		// } else if existingActivity.CoverageType == "CUSTOM" && req.CoverageType == "" { // if it was CUSTOM but req doesn't specify it, use existing
-		// 	for _, studentID := range req.CustomStudentIDs {
-		// 		activityToUpdate.CustomStudentIDs = append(activityToUpdate.CustomStudentIDs, models.User{ID: studentID})
-		// 	}
-		// } else { // if it's not CUSTOM (either changing from custom, or already non-custom), clear them
-		// 	activityToUpdate.CustomStudentIDs = nil
-		// }
-	} else { // if CustomStudentIDs is not provided in the request, retain existing
-		// activityToUpdate.CustomStudentIDs = existingActivity.CustomStudentIDs
+	activity := &models.Activity{
+		ID:                  existingActivity.ID,
+		Name:                req.Name,
+		Template:            req.Template,
+		SchoolID:            existingActivity.SchoolID,
+		IsRequired:          req.IsRequired,
+		CoverageType:        req.CoverageType,
+		FinishedUnit:        req.FinishedUnit,
+		FinishedAmount:      req.FinishedAmount,
+		ExclusiveClassrooms: req.ExclusiveClassrooms,
+		ExclusiveStudentIDs: req.ExclusiveStudentIDs,
+		UpdateProtocol:      req.UpdateProtocol,
+		OwnerID:             existingActivity.OwnerID,
+		IsActive:            existingActivity.IsActive,
 	}
 
-	// if req.IsActive != nil {
-	// 	activityToUpdate.IsActive = *req.IsActive
-	// } else {
-	// 	activityToUpdate.IsActive = existingActivity.IsActive
-	// }
-	// if req.FinishedUnit != "" {
-	// 	activityToUpdate.FinishedUnit = req.FinishedUnit
-	// } else {
-	// 	activityToUpdate.FinishedUnit = existingActivity.FinishedUnit
-	// }
-	// if req.UpdateProtocol != "" {
-	// 	activityToUpdate.UpdateProtocol = req.UpdateProtocol
-	// } else {
-	// 	activityToUpdate.UpdateProtocol = existingActivity.UpdateProtocol
-	// }
-
-	// OwnerID and Timestamps are usually not updated via public API
-	activityToUpdate.OwnerID = existingActivity.OwnerID
-	activityToUpdate.CreatedAt = existingActivity.CreatedAt
-	activityToUpdate.UpdatedAt = time.Now() // Explicitly set updated time
-
-	if err := c.activityService.UpdateActivity(activityToUpdate); err != nil {
+	if err := c.activityService.UpdateActivity(activity); err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update activity: " + err.Error()})
 		return
 	}

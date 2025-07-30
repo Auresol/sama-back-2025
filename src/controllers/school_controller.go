@@ -40,7 +40,7 @@ type CreateSchoolRequest struct {
 	EnglishName             string    `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
 	ShortName               string    `json:"short_name" binding:"required" example:"SMK"`
 	Email                   *string   `json:"email,omitempty" binding:"email" example:"info@smk.ac.th"`
-	DefaultActivityDeadline time.Time `json:"default_activity_deadline"`
+	DefaultActivityDeadline time.Time `json:"default_activity_deadline" example:"2025-07-28T15:49:03.123Z"`
 	Location                *string   `json:"location,omitempty" example:"Bangkok, Thailand"`
 	Phone                   *string   `json:"phone,omitempty" binding:"e164" example:"+66812345678"`
 	Classrooms              []string  `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`

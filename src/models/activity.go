@@ -31,13 +31,13 @@ type Activity struct {
 	UpdateProtocol string `json:"update_protocol,omitempty" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
 
 	School                    School       `json:"-" gorm:"foreignKey:SchoolID"`
-	Owner                     User         `json:"owner,omitempty" gorm:"foreignKey:OwnerID"`
+	Owner                     User         `json:"-" gorm:"foreignKey:OwnerID"`
 	ExclusiveStudentObjects   []*User      `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 	ExclusiveClassroomObjects []*Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index" swaggertype:"string"`
 }
 
 // TableName specifies the table name for the Activity model.
@@ -62,3 +62,12 @@ var ACTIVITY_COVERAGE_TYPE = []string{"ALL", "JUNIOR", "SENIOR"}
 var ACTIVITY_UPDATE_PROTOCOL_ENUM = []string{"RE_EVALUATE_ALL_RECORDS", "IGNORE_PAST_RECORDS"}
 
 var ACTIVITY_FINISHED_UNIT = []string{"TIMES", "HOURS"}
+
+// Activity represents a type of activity students perform, mapped to a PostgreSQL table.
+type ActivityWithStatistic struct {
+	Activity
+	TotalCreatedRecords  int `json:"total_created_records"`
+	TotalSendedRecords   int `json:"total_sended_records"`
+	TotalApprovedRecords int `json:"total_approved_records"`
+	TotalRejectedRecords int `json:"total_rejected_records"`
+}

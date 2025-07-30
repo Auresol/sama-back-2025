@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"gorm.io/gorm"
 
@@ -27,6 +28,7 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 
 		// TODO: use virtual table + join everything
+
 		activity.ExclusiveClassroomObjects = make([]*models.Classroom, len(activity.ExclusiveClassrooms))
 		// Get classroom's id first
 		for i, name := range activity.ExclusiveClassrooms {
@@ -35,7 +37,7 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 			}
 		}
 
-		// Add associate to classroom
+		// Create activity with exclusiveClassroom association, omit the upesrt of classroom
 		err := tx.Model(activity).Omit("ExclusiveClassroomObjects.*").Create(activity).Error
 		if err != nil {
 			return fmt.Errorf("failed to create activity: %w", err)
@@ -48,7 +50,7 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 // GetActivityByID retrieves an activity by its ID, preloading custom student IDs.
 func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) {
 	var activity models.Activity
-	err := r.db.Preload("ExclusiveStudentIDs").Preload("ExclusiveClassroomObjects").First(&activity, id).Error
+	err := r.db.Preload("ExclusiveStudentObjects").Preload("ExclusiveClassroomObjects").First(&activity, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("activity with ID %d not found", id)
@@ -79,32 +81,74 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, limit, off
 	return activities, err
 }
 
+func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint, limit, offset int) ([]models.ActivityWithStatistic, error) {
+	var activities []models.ActivityWithStatistic
+
+	query := `
+		select * from activities ac
+		natural join (
+			select 
+				ac.id,
+				SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
+				SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
+				SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
+				SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_rejected_records	
+			from activities ac
+			join records r on r.activity_id = ac.id
+			group by ac.id
+		) as sc
+	`
+
+	if err := r.db.Raw(query).Scan(&activities).Error; err != nil {
+		return nil, fmt.Errorf("failed to get activities: %w", err)
+	}
+
+	return activities, nil
+}
+
 // UpdateActivity updates an existing activity record.
 // This includes handling updates to the CustomStudentIDs association.
 func (r *ActivityRepository) UpdateActivity(activity *models.Activity) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// First, update the main activity fields
-		if err := tx.Save(activity).Error; err != nil {
+
+		var existedActivity models.Activity
+		if err := tx.Where("id = ?", activity.ID).First(&existedActivity).Error; err != nil {
+			return fmt.Errorf("failed to find existed activity: %w", err)
+		}
+
+		// Check if template got updated and new update protocol is re-evaulate
+		if !reflect.DeepEqual(existedActivity.Template, activity.Template) && activity.UpdateProtocol == "RE_EVALUATE_ALL_RECORDS" {
+
+			// find school first
+			var school models.School
+			if err := tx.First(&school, "id = ?", activity.SchoolID).Error; err != nil {
+				return fmt.Errorf("failed to find school id %d: %w", activity.SchoolID, err)
+			}
+
+			// reset all record status to CREATED
+			err := tx.Model(&models.Record{}).Where("activity_id = ? AND semester = ? AND school_year = ?", activity.ID, school.Semester, school.SchoolYear).UpdateColumn("status", "CREATED").Error
+			if err != nil {
+				return fmt.Errorf("failed to update records (update protocol = re-evaulate all): %w", err)
+			}
+		}
+
+		activity.ExclusiveClassroomObjects = make([]*models.Classroom, len(activity.ExclusiveClassrooms))
+		// Get classroom's id first
+		for i, name := range activity.ExclusiveClassrooms {
+			if err := tx.Select("id").Where("school_id = ? AND classroom = ?", activity.SchoolID, name).First(&activity.ExclusiveClassroomObjects[i]).Error; err != nil {
+				return fmt.Errorf("failed to find classroom '%s': %w", name, err)
+			}
+		}
+
+		// Update the activity fields
+		if err := tx.Omit("ExclusiveClassroomObjects").Save(activity).Error; err != nil {
 			return fmt.Errorf("failed to update activity: %w", err)
 		}
 
-		// // Handle CustomStudentIDs association update
-		// // Option 1: Replace all existing associations
-		// if activity.CoverageType == "CUSTOM" {
-		// 	// GORM's Replace takes a slice of models. If CustomStudentIDs are just IDs,
-		// 	// you need to convert them to minimal User models first.
-		// 	var userModels []models.User
-		// 	for _, user := range activity.CustomStudentIDs { // activity.CustomStudentIDs already `[]User`
-		// 		userModels = append(userModels, models.User{ID: user.ID})
-		// 	}
-		// 	if err := tx.Model(activity).Association("CustomStudentIDs").Replace(userModels); err != nil {
-		// 		return fmt.Errorf("failed to update custom student IDs: %w", err)
-		// 	}
-		// } else { // CoverageType is "REQUIRE" or other, clear custom students
-		// 	if err := tx.Model(activity).Association("CustomStudentIDs").Clear(); err != nil {
-		// 		return fmt.Errorf("failed to clear custom student IDs: %w", err)
-		// 	}
-		// }
+		// Update the link to exclusive classroom using Replace (delete all previous link, then create every new link)
+		if err := tx.Model(activity).Association("ExclusiveClassroomObjects").Replace(activity.ExclusiveClassroomObjects); err != nil {
+			return fmt.Errorf("failed to update activity: %w", err)
+		}
 
 		return nil
 	})
@@ -144,31 +188,4 @@ func (r *ActivityRepository) CountActivities(ownerID, schoolID uint, schoolYear,
 
 	err := query.Count(&count).Error
 	return count, err
-}
-
-func (r *ActivityRepository) classroomTransform(classroomList []string, schoolID uint) []*models.Classroom {
-
-	classrooms := make([]*models.Classroom, len(classroomList))
-
-	for i, name := range classroomList {
-		classrooms[i] = &models.Classroom{
-			SchoolID:  schoolID,
-			Classroom: name,
-		}
-	}
-
-	return classrooms
-}
-
-func (r *ActivityRepository) userTransform(userList []uint) []*models.User {
-
-	users := make([]*models.User, len(userList))
-
-	for i, id := range userList {
-		users[i] = &models.User{
-			ID: id,
-		}
-	}
-
-	return users
 }
