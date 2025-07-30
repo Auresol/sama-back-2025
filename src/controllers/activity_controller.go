@@ -33,7 +33,8 @@ type CreateActivityRequest struct {
 	Name                string                 `json:"name" binding:"required" example:"School Cleanup Drive"`
 	Template            map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
 	IsRequired          bool                   `json:"is_required" binding:"required" example:"true"`
-	CoverageType        string                 `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
+	IsForJunior         bool                   `json:"is_for_junior" validate:"required" example:"true"`
+	IsForSenior         bool                   `json:"is_for_senior" validate:"required" example:"true"`
 	ExclusiveClassrooms []string               `json:"exclusive_classrooms"  binding:"required" example:"1/1"`
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
@@ -47,7 +48,8 @@ type UpdateActivityRequest struct {
 	Name                string                 `json:"name" binding:"required" example:"School Cleanup Drive"`
 	Template            map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
 	IsRequired          bool                   `json:"is_required" binding:"required" example:"true"`
-	CoverageType        string                 `json:"coverage_type" binding:"required,oneof=ALL JUNIOR SENIOR" example:"ALL"`
+	IsForJunior         bool                   `json:"is_for_junior" validate:"required" example:"true"`
+	IsForSenior         bool                   `json:"is_for_senior" validate:"required" example:"true"`
 	ExclusiveClassrooms []string               `json:"exclusive_classrooms"  binding:"required" example:"1/1"`
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
@@ -94,7 +96,8 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 		Template:            req.Template,
 		SchoolID:            claims.SchoolID,
 		IsRequired:          req.IsRequired,
-		CoverageType:        req.CoverageType,
+		IsForJunior:         req.IsForJunior,
+		IsForSenior:         req.IsForSenior,
 		FinishedUnit:        req.FinishedUnit,
 		FinishedAmount:      req.FinishedAmount,
 		ExclusiveClassrooms: req.ExclusiveClassrooms,
@@ -318,7 +321,8 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 		Template:            req.Template,
 		SchoolID:            existingActivity.SchoolID,
 		IsRequired:          req.IsRequired,
-		CoverageType:        req.CoverageType,
+		IsForJunior:         req.IsForJunior,
+		IsForSenior:         req.IsForSenior,
 		FinishedUnit:        req.FinishedUnit,
 		FinishedAmount:      req.FinishedAmount,
 		ExclusiveClassrooms: req.ExclusiveClassrooms,

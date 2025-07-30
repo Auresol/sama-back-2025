@@ -35,7 +35,7 @@ func SetupRoutes() *gin.Engine {
 
 	// Initialize handlers
 	authController := controllers.NewAuthController(userService, validate)
-	userController := controllers.NewUserController(userService, activityService, validate)
+	userController := controllers.NewUserController(userService, activityService, recordService, validate)
 	schoolController := controllers.NewSchoolController(schoolService, userService, validate)
 	activityController := controllers.NewActivityController(activityService, validate)
 	recordController := controllers.NewRecordController(recordService)

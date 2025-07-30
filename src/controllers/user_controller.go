@@ -18,6 +18,7 @@ import (
 type UserController struct {
 	userService     *services.UserService
 	activityService *services.ActivityService
+	recordService   *services.RecordService
 	validate        *validator.Validate
 }
 
@@ -25,11 +26,13 @@ type UserController struct {
 func NewUserController(
 	userService *services.UserService,
 	activityService *services.ActivityService,
+	recordService *services.RecordService,
 	validate *validator.Validate,
 ) *UserController {
 	return &UserController{
 		userService:     userService,
 		activityService: activityService,
+		recordService:   recordService,
 		validate:        validate,
 	}
 }
@@ -312,19 +315,11 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /user/records [get]
 func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
-	// claims, ok := middlewares.GetUserClaimsFromContext(ctx)
-	// if !ok {
-	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-	// 	return
-	// }
-
-	// TODO: Implement the service call to fetch activities related to claims.UserID
-	// This service method would need to query activities where:
-	// 1. owner_id matches claims.UserID
-	// 2. coverage_type is 'ALL' (if applicable to this user's school)
-	// 3. user is in an exclusive_classroom (requires joining through activity_exclusive_classrooms and Classroom model's composite PK)
-	// 4. user is in exclusive_student_ids (requires joining through activity_exclusive_student_ids)
-	// This will be a more complex query in the repository.
+	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
 
 	// Example placeholder for activities:
 	// activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
@@ -332,9 +327,17 @@ func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
 	//     ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
 	//     return
 	// }
+	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
+
+	records, err := c.recordService.GetAllRecords(claims.UserID, 0, 0, "", limit, offset)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve my records: " + err.Error()})
+		return
+	}
 
 	// For now, returning a placeholder response
-	ctx.JSON(http.StatusOK, []models.Record{}) // Return an empty array or mock data
+	ctx.JSON(http.StatusOK, records) // Return an empty array or mock data
 }
 
 // GetStatisticByID retrieves a list of record related to the authenticated user.

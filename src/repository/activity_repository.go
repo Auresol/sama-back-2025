@@ -84,22 +84,56 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, limit, off
 func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint, limit, offset int) ([]models.ActivityWithStatistic, error) {
 	var activities []models.ActivityWithStatistic
 
+	// Query all activities assigned to user based on 3 condition
+	// 1. activities is for junior or senior
+	// 2. activitity exclusive classroom contain classroom of user
+	// 3. activity exclusive student id contain user
 	query := `
-		select * from activities ac
-		natural join (
-			select 
-				ac.id,
-				SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
-				SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
-				SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
-				SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_rejected_records	
-			from activities ac
-			join records r on r.activity_id = ac.id
-			group by ac.id
-		) as sc
+		SELECT 
+			ac.*,
+			SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
+			SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
+			SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
+			SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records	
+		FROM activities ac
+		LEFT JOIN records r ON r.activity_id = ac.id
+		WHERE ac.school_id = ? and
+		(
+		-- Condition 1: Check general coverage for the user's "junior" status
+			-- We'll get the user's is_junior status from their classroom
+			EXISTS (
+				SELECT 1
+				FROM users u_main
+				JOIN classrooms cl_main ON u_main.classroom_id = cl_main.id
+				WHERE u_main.id = ? -- Target user ID
+				AND (
+					(ac.is_for_junior = TRUE AND cl_main.is_junior = TRUE) OR
+					(ac.is_for_senior = TRUE AND cl_main.is_junior = FALSE)
+				)
+			)
+			OR
+			-- Condition 2: Check if activity is explicitly assigned to user's classrooms
+			EXISTS (
+				SELECT 1
+				FROM activity_exclusive_classroom aec
+				JOIN users us ON aec.classroom_id = us.classroom_id
+				WHERE aec.activity_id = ac.id
+				AND us.id = ? -- Target user ID
+			)
+			OR
+			-- Condition 3: Check if activity is explicitly assigned to the user directly
+			EXISTS (
+				SELECT 1
+				FROM activity_exclusive_student_ids aes
+				WHERE aes.activity_id = ac.id
+				AND aes.user_id = ? -- Target user ID
+			)
+		)
+		GROUP BY ac.id
+		ORDER BY ac.is_required DESC, ac.id ASC
 	`
 
-	if err := r.db.Raw(query).Scan(&activities).Error; err != nil {
+	if err := r.db.Raw(query, schoolID, userID, userID, userID).Scan(&activities).Error; err != nil {
 		return nil, fmt.Errorf("failed to get activities: %w", err)
 	}
 

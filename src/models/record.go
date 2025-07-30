@@ -12,7 +12,7 @@ type Record struct {
 
 	ActivityID uint                   `json:"activity_id" validate:"required"`
 	Data       map[string]interface{} `json:"data" gorm:"serializer:json" validate:"required"`
-	Advise     string                 `json:"advise,omitempty"` // Advise might be optional
+	Advise     *string                `json:"advise,omitempty"` // Advise might be optional
 
 	// Foreign keys to other models
 	StudentID uint  `json:"student_id" gorm:"index" validate:"required,gt=0"`  // Index for faster lookups

@@ -44,16 +44,13 @@ func (r *RecordRepository) GetRecordByID(id uint) (*models.Record, error) {
 // GetAllRecords retrieves all records with pagination and optional filtering.
 // Filters can be added based on SchoolID, StudentID, TeacherID, ActivityID, Status etc.
 func (r *RecordRepository) GetAllRecords(
-	schoolID, studentID, teacherID, activityID uint,
+	studentID, teacherID, activityID uint,
 	status string,
 	limit, offset int,
 ) ([]models.Record, error) {
 	var records []models.Record
 	query := r.db.Model(&models.Record{})
 
-	if schoolID != 0 {
-		query = query.Where("school_id = ?", schoolID)
-	}
 	if studentID != 0 {
 		query = query.Where("student_id = ?", studentID)
 	}

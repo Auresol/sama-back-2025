@@ -115,8 +115,6 @@ func (s *RecordService) CreateRecord(record *models.Record, schoolID uint, creat
 	record.StatusLogs = append(record.StatusLogs, models.StatusHistory{
 		Status:     record.Status,
 		UpdateTime: time.Now(),
-		// UserID is not directly in StatusHistory, but if you want to log who made the change
-		// to the status, you'd add a UserID field to StatusHistory and pass createdByUserID.
 	})
 
 	return s.recordRepo.CreateRecord(record)
@@ -129,11 +127,11 @@ func (s *RecordService) GetRecordByID(id uint) (*models.Record, error) {
 
 // GetAllRecords retrieves all records with filtering and pagination.
 func (s *RecordService) GetAllRecords(
-	schoolID, studentID, teacherID, activityID uint,
+	studentID, teacherID, activityID uint,
 	status string,
 	limit, offset int,
 ) ([]models.Record, error) {
-	return s.recordRepo.GetAllRecords(schoolID, studentID, teacherID, activityID, status, limit, offset)
+	return s.recordRepo.GetAllRecords(studentID, teacherID, activityID, status, limit, offset)
 }
 
 // UpdateRecord updates an existing record.
@@ -172,7 +170,7 @@ func (s *RecordService) UpdateRecord(record *models.Record, updatedByUserID uint
 	if record.Data != nil { // Check if Data map is provided
 		existingRecord.Data = record.Data
 	}
-	if record.Advise != "" {
+	if record.Advise != nil {
 		existingRecord.Advise = record.Advise
 	}
 	if record.StudentID != 0 {
@@ -209,4 +207,72 @@ func (s *RecordService) UpdateRecord(record *models.Record, updatedByUserID uint
 // DeleteRecord deletes a record by its ID.
 func (s *RecordService) DeleteRecord(id uint) error {
 	return s.recordRepo.DeleteRecord(id)
+}
+
+func (r *RecordService) SendRecord(id, teacherID, userID uint) error {
+	existingRecord, err := r.recordRepo.GetRecordByID(id)
+	if err != nil {
+		return fmt.Errorf("record not found for update: %w", err)
+	}
+
+	existingRecord.Status = "SENDED"
+	existingRecord.TeacherID = &teacherID
+	existingRecord.StatusLogs = append(existingRecord.StatusLogs,
+		models.StatusHistory{
+			Status:     "SENDED",
+			UpdateTime: time.Now(),
+		})
+
+	return r.recordRepo.UpdateRecord(existingRecord)
+}
+
+func (r *RecordService) UnsendRecord(id, userID uint) error {
+	existingRecord, err := r.recordRepo.GetRecordByID(id)
+	if err != nil {
+		return fmt.Errorf("record not found for update: %w", err)
+	}
+
+	existingRecord.Status = "CREATED"
+	existingRecord.TeacherID = nil
+	existingRecord.StatusLogs = append(existingRecord.StatusLogs,
+		models.StatusHistory{
+			Status:     "CREATED",
+			UpdateTime: time.Now(),
+		})
+
+	return r.recordRepo.UpdateRecord(existingRecord)
+}
+
+func (r *RecordService) ApproveRecord(id uint, advice *string, userID uint) error {
+	existingRecord, err := r.recordRepo.GetRecordByID(id)
+	if err != nil {
+		return fmt.Errorf("record not found for update: %w", err)
+	}
+
+	existingRecord.Status = "APPROVED"
+	existingRecord.Advise = advice
+	existingRecord.StatusLogs = append(existingRecord.StatusLogs,
+		models.StatusHistory{
+			Status:     "APPROVED",
+			UpdateTime: time.Now(),
+		})
+
+	return r.recordRepo.UpdateRecord(existingRecord)
+}
+
+func (r *RecordService) RejectRecord(id uint, advice *string, userID uint) error {
+	existingRecord, err := r.recordRepo.GetRecordByID(id)
+	if err != nil {
+		return fmt.Errorf("record not found for update: %w", err)
+	}
+
+	existingRecord.Status = "REJECTED"
+	existingRecord.Advise = advice
+	existingRecord.StatusLogs = append(existingRecord.StatusLogs,
+		models.StatusHistory{
+			Status:     "REJECTED",
+			UpdateTime: time.Now(),
+		})
+
+	return r.recordRepo.UpdateRecord(existingRecord)
 }

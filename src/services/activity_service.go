@@ -31,9 +31,9 @@ func NewActivityService(validate *validator.Validate) *ActivityService {
 // validateActivityData performs custom validation beyond struct tags.
 func (s *ActivityService) validateActivityData(activity *models.Activity) error {
 	// Validate CoverageType, FinishedCondition, Status, UpdateProtocol against enums
-	if !utils.Contains(models.ACTIVITY_COVERAGE_TYPE, activity.CoverageType) { // CoverageType enum is actually Status, confusing naming in model
-		return fmt.Errorf("invalid CoverageType: %s", activity.CoverageType)
-	}
+	// if !utils.Contains(models.ACTIVITY_COVERAGE_TYPE, activity.CoverageType) { // CoverageType enum is actually Status, confusing naming in model
+	// 	return fmt.Errorf("invalid CoverageType: %s", activity.CoverageType)
+	// }
 	if !utils.Contains(models.ACTIVITY_FINISHED_UNIT, activity.FinishedUnit) {
 		return fmt.Errorf("invalid FinishedCondition: %s", activity.FinishedUnit)
 	}

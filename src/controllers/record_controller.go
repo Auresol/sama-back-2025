@@ -77,12 +77,12 @@ func (c *RecordController) CreateRecord(ctx *gin.Context) {
 		return
 	}
 
-	// Authorization: Example - only teachers can create records for now.
-	// You'll need to refine this based on your business logic (e.g., students creating their own records, etc.)
-	if claims.Role != "TCH" && claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
-		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions to create records"})
-		return
-	}
+	// // Authorization: Example - only teachers can create records for now.
+	// // You'll need to refine this based on your business logic (e.g., students creating their own records, etc.)
+	// if claims.Role != "TCH" && claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+	// 	ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions to create records"})
+	// 	return
+	// }
 
 	var req CreateRecordRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -91,21 +91,12 @@ func (c *RecordController) CreateRecord(ctx *gin.Context) {
 	}
 
 	record := &models.Record{
-		ActivityID: req.ActivityID, // Assuming this is uint
+		ActivityID: req.ActivityID,
 		StudentID:  claims.UserID,
+		Data:       req.Data,
 		Amount:     req.Amount,
 		Status:     "CREATED",
 	}
-
-	// Unmarshal raw JSON into map[string]interface{}
-	// if len(req.Data) > 0 {
-	// 	if err := json.Unmarshal(req.Data, &record.Data); err != nil {
-	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid data JSON: " + err.Error()})
-	// 		return
-	// 	}
-	// } else {
-	// 	record.Data = make(map[string]interface{}) // Ensure it's an empty map if not provided
-	// }
 
 	// Pass the authenticated user's ID for status log
 	if err := c.recordService.CreateRecord(record, claims.SchoolID, claims.UserID); err != nil {
@@ -270,7 +261,7 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 	}
 
 	records, err := c.recordService.GetAllRecords(
-		filterSchoolID, filterStudentID, filterTeacherID, filterActivityID,
+		filterStudentID, filterTeacherID, filterActivityID,
 		filterStatus,
 		limit, offset,
 	)
@@ -332,7 +323,7 @@ func (c *RecordController) UpdateRecord(ctx *gin.Context) {
 	// Example: Student can only update their own records if status is CREATED.
 	// Teacher can update records for students in their school if status is CREATED/SENDED.
 	// Admin/SAMA_CREW can update any record.
-	isAuthorized := false
+	isAuthorized := true
 	// if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" { // Admins/Sama Crew can edit any record
 	// 	isAuthorized = true
 	// } else if claims.Role == "STD" && claims.UserID == existingRecord.StudentID && existingRecord.Status == "CREATED" {
@@ -402,7 +393,7 @@ func (c *RecordController) DeleteRecord(ctx *gin.Context) {
 	// ADMIN can delete records in their school.
 	// TCH can delete records they are assigned to or for students in their school.
 	// Students typically cannot delete records.
-	isAuthorized := false
+	isAuthorized := true
 	// if claims.Role == "SAMA_CREW" {
 	// 	isAuthorized = true
 	// } else if claims.Role == "TCH" && (claims.UserID == recordToDelete.TeacherID || claims.SchoolID == recordToDelete.SchoolID) {
@@ -490,14 +481,14 @@ func (c *RecordController) SendRecord(ctx *gin.Context) {
 	}
 
 	// Call service method to change status to SENDED
-	// if err := c.recordService.SendRecord(uint(recordID), req.TeacherID, claims.UserID); err != nil {
-	// 	if err.Error() == fmt.Sprintf("record %d cannot be sent: invalid status", recordID) { // Example of a specific service error
-	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
-	// 		return
-	// 	}
-	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to send record: " + err.Error()})
-	// 	return
-	// }
+	if err := c.recordService.SendRecord(uint(recordID), req.TeacherID, claims.UserID); err != nil {
+		if err.Error() == fmt.Sprintf("record %d cannot be sent: invalid status", recordID) { // Example of a specific service error
+			ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to send record: " + err.Error()})
+		return
+	}
 
 	// Retrieve the updated record to return
 	updatedRecord, err := c.recordService.GetRecordByID(uint(recordID))
@@ -571,14 +562,14 @@ func (c *RecordController) ApproveRecord(ctx *gin.Context) {
 	}
 
 	// Call service method to change status to APPROVED
-	// if err := c.recordService.ApproveRecord(uint(recordID), req.Advice, claims.UserID); err != nil {
-	// 	if err.Error() == fmt.Sprintf("record %d cannot be approved: invalid status", recordID) { // Example of a specific service error
-	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
-	// 		return
-	// 	}
-	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to approve record: " + err.Error()})
-	// 	return
-	// }
+	if err := c.recordService.ApproveRecord(uint(recordID), req.Advice, claims.UserID); err != nil {
+		if err.Error() == fmt.Sprintf("record %d cannot be approved: invalid status", recordID) { // Example of a specific service error
+			ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to approve record: " + err.Error()})
+		return
+	}
 
 	// Retrieve the updated record to return
 	updatedRecord, err := c.recordService.GetRecordByID(uint(recordID))
@@ -652,14 +643,14 @@ func (c *RecordController) RejectRecord(ctx *gin.Context) {
 	}
 
 	// Call service method to change status to REJECTED
-	// if err := c.recordService.RejectRecord(uint(recordID), req.Advice, claims.UserID); err != nil {
-	// 	if err.Error() == fmt.Sprintf("record %d cannot be rejected: invalid status", recordID) { // Example of a specific service error
-	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
-	// 		return
-	// 	}
-	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to reject record: " + err.Error()})
-	// 	return
-	// }
+	if err := c.recordService.RejectRecord(uint(recordID), req.Advice, claims.UserID); err != nil {
+		if err.Error() == fmt.Sprintf("record %d cannot be rejected: invalid status", recordID) { // Example of a specific service error
+			ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to reject record: " + err.Error()})
+		return
+	}
 
 	// Retrieve the updated record to return
 	updatedRecord, err := c.recordService.GetRecordByID(uint(recordID))
@@ -739,14 +730,14 @@ func (c *RecordController) UnsendRecord(ctx *gin.Context) {
 	}
 
 	// // Call service method to change status to CREATED
-	// if err := c.recordService.UnsendRecord(uint(recordID), claims.UserID); err != nil {
-	// 	if err.Error() == fmt.Sprintf("record %d cannot be unsent: invalid status", recordID) { // Example of a specific service error
-	// 		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
-	// 		return
-	// 	}
-	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to unsend record: " + err.Error()})
-	// 	return
-	// }
+	if err := c.recordService.UnsendRecord(uint(recordID), claims.UserID); err != nil {
+		if err.Error() == fmt.Sprintf("record %d cannot be unsent: invalid status", recordID) { // Example of a specific service error
+			ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to unsend record: " + err.Error()})
+		return
+	}
 
 	// Retrieve the updated record to return
 	updatedRecord, err := c.recordService.GetRecordByID(uint(recordID))

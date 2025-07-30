@@ -15,8 +15,9 @@ type Activity struct {
 
 	Template map[string]interface{} `json:"template" gorm:"serializer:json" validate:"required"`
 
-	IsRequired   bool   `json:"is_required" validate:"required"`
-	CoverageType string `json:"coverage_type" validate:"required,oneof=ALL JUNIOR SENIOR"`
+	IsRequired  bool `json:"is_required" validate:"required"`
+	IsForJunior bool `json:"is_for_junior" validate:"required"`
+	IsForSenior bool `json:"is_for_senior" validate:"required"`
 
 	ExclusiveClassrooms []string `json:"exclusive_classroom" validate:"required" gorm:"-:all"`
 	ExclusiveStudentIDs []uint   `json:"exclusive_student_ids" validate:"required" gorm:"-:all"`
