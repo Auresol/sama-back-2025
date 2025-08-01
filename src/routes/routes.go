@@ -76,7 +76,7 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.DELETE("/school/:id", schoolController.DeleteSchool)
 		authRoutes.POST("/school/advance-semester", schoolController.AdvanceSemester)
 		authRoutes.POST("/school/revert-semester", schoolController.RevertSemester)
-		authRoutes.GET("/school/:id/users", schoolController.GetUsersBySchoolID)
+		authRoutes.GET("/school/:id/user", schoolController.GetUsersBySchoolID)
 
 		authRoutes.POST("/activity", activityController.CreateActivity)
 		authRoutes.GET("/activity", activityController.GetAllActivities)
