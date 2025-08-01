@@ -59,7 +59,7 @@ type UnsendRecordRequest struct {
 // CreateRecord handles creating a new record.
 // @Summary Create a new record
 // @Description Create a new activity record with associated student, teacher, school, and activity details.
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -110,7 +110,7 @@ func (c *RecordController) CreateRecord(ctx *gin.Context) {
 // GetRecordByID retrieves a record by its ID.
 // @Summary Get record by ID
 // @Description Retrieve details of a specific record by its ID. Accessible by relevant student/teacher/admin, or Sama Crew.
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Record ID"
@@ -173,7 +173,7 @@ func (c *RecordController) GetRecordByID(ctx *gin.Context) {
 // GetAllRecords retrieves a list of records with filtering and pagination.
 // @Summary Get all records
 // @Description Retrieve a list of records with optional filters (school, student, teacher, activity, status).
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Produce json
 // @Param school_id query int false "Filter by School ID"
@@ -188,7 +188,7 @@ func (c *RecordController) GetRecordByID(ctx *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /records [get]
+// @Router /record [get]
 func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
@@ -276,7 +276,7 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 // UpdateRecord handles updating an existing record.
 // @Summary Update an existing record
 // @Description Update an existing record's data and/or amount. Accessible by relevant student/teacher/admin, or Sama Crew.
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -353,7 +353,7 @@ func (c *RecordController) UpdateRecord(ctx *gin.Context) {
 // DeleteRecord handles deleting a record.
 // @Summary Delete a record
 // @Description Delete a record by ID. Requires relevant teacher/admin, or Sama Crew role.
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Record ID to delete"
@@ -422,7 +422,7 @@ func (c *RecordController) DeleteRecord(ctx *gin.Context) {
 // SendRecord handles sending a record for approval.
 // @Summary Send a record
 // @Description Change the status of a record to 'SENDED'.
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -503,7 +503,7 @@ func (c *RecordController) SendRecord(ctx *gin.Context) {
 // ApproveRecord handles approving a record.
 // @Summary Approve a record
 // @Description Change the status of a record to 'APPROVED'. Requires teacher or admin role.
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -584,7 +584,7 @@ func (c *RecordController) ApproveRecord(ctx *gin.Context) {
 // RejectRecord handles rejecting a record.
 // @Summary Reject a record
 // @Description Change the status of a record to 'REJECTED'. Requires teacher or admin role.
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -665,7 +665,7 @@ func (c *RecordController) RejectRecord(ctx *gin.Context) {
 // UnsendRecord handles unsending a record.
 // @Summary Unsend a record
 // @Description Change the status of a record back to 'CREATED' from 'SENDED'.
-// @Tags Records
+// @Tags Record
 // @Security BearerAuth
 // @Accept json
 // @Produce json

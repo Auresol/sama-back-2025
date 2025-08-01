@@ -61,7 +61,7 @@ type UpdateActivityRequest struct {
 // CreateActivity handles creating a new activity.
 // @Summary Create a new activity
 // @Description Create a new activity record with specified details, including template and student coverage. Requires TCH, ADMIN or Sama Crew role.
-// @Tags Activities
+// @Tags Activity
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -133,7 +133,7 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 // GetActivityByID retrieves an activity by its ID.
 // @Summary Get activity by ID
 // @Description Retrieve details of a specific activity by its ID. Accessible by owner, relevant school ADMIN/TCH, or Sama Crew.
-// @Tags Activities
+// @Tags Activity
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Activity ID"
@@ -203,10 +203,10 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, activity)
 }
 
-// GetAllActivities retrieves a list of activities.
+// GetAllActivity retrieves a list of activities.
 // @Summary Get all activities
 // @Description Retrieve a list of activities with optional filters by owner, school year, and semester. Requires ADMIN or Sama Crew role, or TCH for their own activities.
-// @Tags Activities
+// @Tags Activity
 // @Security BearerAuth
 // @Produce json
 // @Param owner_id query int false "Filter by owner User ID"
@@ -220,7 +220,7 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /activities [get]
+// @Router /activity [get]
 func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
@@ -267,7 +267,7 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 // UpdateActivity handles updating an existing activity.
 // @Summary Update an activity
 // @Description Update an existing activity record by ID. Requires activity owner (TCH/ADMIN), or Sama Crew role.
-// @Tags Activities
+// @Tags Activity
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -350,7 +350,7 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 // DeleteActivity handles deleting an activity.
 // @Summary Delete an activity
 // @Description Delete an activity record by ID. Requires activity owner (TCH/ADMIN), or Sama Crew role.
-// @Tags Activities
+// @Tags Activity
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Activity ID to delete"

@@ -67,10 +67,10 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.GET("/user/:id", userController.GetUserByID)
 		authRoutes.PUT("/user/:id", userController.UpdateUserProfile)
 		authRoutes.DELETE("/user/:id", userController.DeleteUser)
-		authRoutes.GET("/user/activities", userController.GetAssignedActivities)
-		authRoutes.GET("/user/records", userController.GetRelatedRecords) // require pagination
+		authRoutes.GET("/user/activity", userController.GetAssignedActivities)
+		authRoutes.GET("/user/record", userController.GetRelatedRecords) // require pagination
 
-		authRoutes.GET("/schools", schoolController.GetAllSchools)
+		authRoutes.GET("/school", schoolController.GetAllSchools)
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
 		authRoutes.PUT("/school/:id", schoolController.UpdateSchool)
 		authRoutes.DELETE("/school/:id", schoolController.DeleteSchool)
@@ -79,12 +79,12 @@ func SetupRoutes() *gin.Engine {
 		authRoutes.GET("/school/:id/users", schoolController.GetUsersBySchoolID)
 
 		authRoutes.POST("/activity", activityController.CreateActivity)
-		authRoutes.GET("/activities", activityController.GetAllActivities)
+		authRoutes.GET("/activity", activityController.GetAllActivities)
 		authRoutes.GET("/activity/:id", activityController.GetActivityByID)
 		authRoutes.PUT("/activity/:id", activityController.UpdateActivity)
 		authRoutes.DELETE("/activity/:id", activityController.DeleteActivity)
 
-		authRoutes.GET("/records", recordController.GetAllRecords)
+		authRoutes.GET("/record", recordController.GetAllRecords)
 		authRoutes.GET("/record/:id", recordController.GetRecordByID)
 		authRoutes.POST("/record", recordController.CreateRecord)
 		authRoutes.PUT("/record/:id", recordController.UpdateRecord)

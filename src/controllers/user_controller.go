@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"sama/sama-backend-2025/src/middlewares"
-	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/services"
 
 	// For JWT claims
@@ -263,7 +262,7 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 	c.Status(http.StatusNoContent) // 204 No Content for successful deletion
 }
 
-// GetAssignedActivities retrieves a list of activities related to the authenticated user.
+// GetAssignedActivity retrieves a list of activities related to the authenticated user.
 // This includes activities where the user is the owner, or part of exclusive classrooms/students.
 // @Summary Get activities related to the authenticated user
 // @Description Retrieve a list of activities that are assigned to or owned by the authenticated user.
@@ -273,7 +272,7 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 // @Success 200 {array} models.ActivityWithStatistic "List of related activities retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/activities [get]
+// @Router /user/activity [get]
 func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
@@ -313,7 +312,7 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 // @Success 200 {array} models.Record "List of related activities retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/records [get]
+// @Router /user/record [get]
 func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
@@ -340,39 +339,39 @@ func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, records) // Return an empty array or mock data
 }
 
-// GetStatisticByID retrieves a list of record related to the authenticated user.
-// This include records that user created (for student) or checking (for teacher)
-// @Summary Get records related to the authenticated user
-// @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
-// @Tags User
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {array} models.Record "List of related activities retrieved successfully"
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/{id}/statistic [get]
-func (c *UserController) GetStatisticByID(ctx *gin.Context) {
-	// claims, ok := middlewares.GetUserClaimsFromContext(ctx)
-	// if !ok {
-	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-	// 	return
-	// }
+// // GetStatisticByID retrieves a list of record related to the authenticated user.
+// // This include records that user created (for student) or checking (for teacher)
+// // @Summary Get records related to the authenticated user
+// // @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
+// // @Tags User
+// // @Security BearerAuth
+// // @Produce json
+// // @Success 200 {array} models.Record "List of related activities retrieved successfully"
+// // @Failure 401 {object} ErrorResponse "Unauthorized"
+// // @Failure 500 {object} ErrorResponse "Internal server error"
+// // @Router /user/{id}/statistic [get]
+// func (c *UserController) GetStatisticByID(ctx *gin.Context) {
+// 	// claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+// 	// if !ok {
+// 	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+// 	// 	return
+// 	// }
 
-	// TODO: Implement the service call to fetch activities related to claims.UserID
-	// This service method would need to query activities where:
-	// 1. owner_id matches claims.UserID
-	// 2. coverage_type is 'ALL' (if applicable to this user's school)
-	// 3. user is in an exclusive_classroom (requires joining through activity_exclusive_classrooms and Classroom model's composite PK)
-	// 4. user is in exclusive_student_ids (requires joining through activity_exclusive_student_ids)
-	// This will be a more complex query in the repository.
+// 	// TODO: Implement the service call to fetch activities related to claims.UserID
+// 	// This service method would need to query activities where:
+// 	// 1. owner_id matches claims.UserID
+// 	// 2. coverage_type is 'ALL' (if applicable to this user's school)
+// 	// 3. user is in an exclusive_classroom (requires joining through activity_exclusive_classrooms and Classroom model's composite PK)
+// 	// 4. user is in exclusive_student_ids (requires joining through activity_exclusive_student_ids)
+// 	// This will be a more complex query in the repository.
 
-	// Example placeholder for activities:
-	// activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
-	// if err != nil {
-	//     ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
-	//     return
-	// }
+// 	// Example placeholder for activities:
+// 	// activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
+// 	// if err != nil {
+// 	//     ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
+// 	//     return
+// 	// }
 
-	// For now, returning a placeholder response
-	ctx.JSON(http.StatusOK, []models.Record{}) // Return an empty array or mock data
-}
+// 	// For now, returning a placeholder response
+// 	ctx.JSON(http.StatusOK, []models.Record{}) // Return an empty array or mock data
+// }

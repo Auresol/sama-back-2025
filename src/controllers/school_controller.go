@@ -190,7 +190,7 @@ func (h *SchoolController) GetSchoolByID(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /schools [get]
+// @Router /school [get]
 func (h *SchoolController) GetAllSchools(c *gin.Context) {
 	// claims, ok := middlewares.GetUserClaimsFromContext(c)
 	// if !ok {
@@ -484,7 +484,7 @@ func (h *SchoolController) RevertSemester(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /school/{id}/users [get]
+// @Router /school/{id}/user [get]
 func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
