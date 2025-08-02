@@ -81,8 +81,8 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 	// 	c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
 	// 	return
 	// }
-	// // Authorization: Only ADMIN or SAMA_CREW can create schools
-	// if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+	// // Authorization: Only ADMIN or SAMA can create schools
+	// if claims.Role != "ADMIN" && claims.Role != "SAMA" {
 	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 	// 	return
 	// }
@@ -132,7 +132,7 @@ func (h *SchoolController) CreateSchool(c *gin.Context) {
 
 // GetSchoolByID retrieves a school by its ID.
 // @Summary Get school by ID
-// @Description Retrieve a school's details by its ID. Accessible by ADMIN (for their school), SAMA_CREW, or any TCH/STD if they belong to that school.
+// @Description Retrieve a school's details by its ID. Accessible by ADMIN (for their school), SAMA, or any TCH/STD if they belong to that school.
 // @Tags School
 // @Security BearerAuth
 // @Produce json
@@ -158,9 +158,9 @@ func (h *SchoolController) GetSchoolByID(c *gin.Context) {
 	}
 
 	// Authorization:
-	// SAMA_CREW can access any school.
+	// SAMA can access any school.
 	// ADMIN/TCH/STD can access their own school's data.
-	if !(claims.Role != "SAMA_CREW" && claims.SchoolID != uint(id)) {
+	if !(claims.Role != "SAMA" && claims.SchoolID != uint(id)) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to access this school's data"})
 		return
 	}
@@ -197,8 +197,8 @@ func (h *SchoolController) GetAllSchools(c *gin.Context) {
 	// 	c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
 	// 	return
 	// }
-	// // Authorization: Only SAMA_CREW can get all schools
-	// if claims.Role != "SAMA_CREW" {
+	// // Authorization: Only SAMA can get all schools
+	// if claims.Role != "SAMA" {
 	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 	// 	return
 	// }
@@ -246,7 +246,7 @@ func (h *SchoolController) UpdateSchool(c *gin.Context) {
 	}
 
 	// Authorization:
-	// SAMA_CREW can update any school.
+	// SAMA can update any school.
 	// ADMIN can only update their own school.
 	if claims.Role != "SAMA" && claims.Role != "ADMIN" {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
@@ -327,9 +327,9 @@ func (h *SchoolController) DeleteSchool(c *gin.Context) {
 	}
 
 	// Authorization:
-	// SAMA_CREW can delete any school.
+	// SAMA can delete any school.
 	// ADMIN can only delete their own school.
-	if claims.Role != "SAMA_CREW" && claims.Role != "ADMIN" {
+	if claims.Role != "SAMA" && claims.Role != "ADMIN" {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 		return
 	}
@@ -382,8 +382,8 @@ func (h *SchoolController) AdvanceSemester(c *gin.Context) {
 		return
 	}
 
-	// Authorization: Only ADMINs (for their school) or SAMA_CREW can perform this
-	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+	// Authorization: Only ADMINs (for their school) or SAMA can perform this
+	if claims.Role != "ADMIN" && claims.Role != "SAMA" {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 		return
 	}
@@ -437,8 +437,8 @@ func (h *SchoolController) RevertSemester(c *gin.Context) {
 		return
 	}
 
-	// Authorization: Only ADMINs (for their school) or SAMA_CREW can perform this
-	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+	// Authorization: Only ADMINs (for their school) or SAMA can perform this
+	if claims.Role != "ADMIN" && claims.Role != "SAMA" {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 		return
 	}
@@ -492,8 +492,8 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 		return
 	}
 
-	// Authorization: Only ADMINs (for their school) or SAMA_CREW can access this
-	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+	// Authorization: Only ADMINs (for their school) or SAMA can access this
+	if claims.Role != "ADMIN" && claims.Role != "SAMA" {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 		return
 	}
@@ -548,8 +548,8 @@ func (h *SchoolController) GetStatistic(c *gin.Context) {
 		return
 	}
 
-	// Authorization: Only ADMINs (for their school) or SAMA_CREW can access this
-	if claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+	// Authorization: Only ADMINs (for their school) or SAMA can access this
+	if claims.Role != "ADMIN" && claims.Role != "SAMA" {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
 		return
 	}

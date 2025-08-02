@@ -134,6 +134,24 @@ func (s *RecordService) GetAllRecords(
 	return s.recordRepo.GetAllRecords(studentID, teacherID, activityID, status, limit, offset)
 }
 
+// GetAllRecords retrieves all records with filtering and pagination.
+func (s *RecordService) GetTeacherRecords(
+	teacherID, activityID uint,
+	status string,
+	limit, offset int,
+) ([]models.Record, error) {
+	return s.recordRepo.GetAllRecords(0, teacherID, activityID, status, limit, offset)
+}
+
+// GetAllRecords retrieves all records with filtering and pagination.
+func (s *RecordService) GetStudentRecords(
+	studentID, activityID uint,
+	status string,
+	limit, offset int,
+) ([]models.Record, error) {
+	return s.recordRepo.GetAllRecords(studentID, 0, activityID, status, limit, offset)
+}
+
 // UpdateRecord updates an existing record.
 func (s *RecordService) UpdateRecord(record *models.Record, updatedByUserID uint) error {
 	// Fetch existing record to ensure it exists and to get its current state for status logging

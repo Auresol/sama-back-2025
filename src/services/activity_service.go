@@ -50,7 +50,7 @@ func (s *ActivityService) validateActivityData(activity *models.Activity) error 
 		return fmt.Errorf("failed to validate owner_id: %w", err)
 	}
 	// Optionally, check if owner has appropriate role (e.g., TCH, ADMIN)
-	if owner.Role != "TCH" && owner.Role != "ADMIN" && owner.Role != "SAMA_CREW" {
+	if owner.Role != "TCH" && owner.Role != "ADMIN" && owner.Role != "SAMA" {
 		return errors.New("owner must be a teacher, admin, or Sama Crew member")
 	}
 

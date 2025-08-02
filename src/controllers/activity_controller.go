@@ -39,7 +39,7 @@ type CreateActivityRequest struct {
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount      int                    `json:"finished_amount" binding:"required,gt=0" example:"10"` // Must be positive
+	FinishedAmount      int                    `json:"finished_amount" binding:"required" example:"10"`
 	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }
 
@@ -54,7 +54,7 @@ type UpdateActivityRequest struct {
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount      int                    `json:"finished_amount" binding:"required,gt=0" example:"10"` // Must be positive
+	FinishedAmount      int                    `json:"finished_amount" binding:"required" example:"10"`
 	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }
 
@@ -80,7 +80,7 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 	}
 
 	// Authorization: Only Teachers, Admins, or Sama Crew can create activities
-	if claims.Role != "TCH" && claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+	if claims.Role != "TCH" && claims.Role != "ADMIN" && claims.Role != "SAMA" {
 		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions to create activities"})
 		return
 	}
@@ -103,8 +103,8 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 		ExclusiveClassrooms: req.ExclusiveClassrooms,
 		ExclusiveStudentIDs: req.ExclusiveStudentIDs,
 		UpdateProtocol:      req.UpdateProtocol,
-		OwnerID:             claims.UserID, // Set owner from authenticated user
-		IsActive:            true,          // Default to active on creation
+		OwnerID:             claims.UserID,
+		IsActive:            true,
 	}
 
 	// Prepare CustomStudentIDs for the service.
@@ -172,7 +172,7 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 	// 2. Owner of the activity can view it.
 	// 3. ADMIN/TCH of the same school as the activity's owner (assuming owner's school is tied to activity)
 	//    or if the activity is school-wide for their school, can view it.
-	if claims.Role != "SAMA_CREW" && claims.UserID != activity.OwnerID {
+	if claims.Role != "SAMA" && claims.UserID != activity.OwnerID {
 		// // Need to fetch owner's school ID to compare
 		// owner, err := c.activityService.userRepo.GetUserByID(activity.OwnerID)
 		// if err != nil {
@@ -210,7 +210,7 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param owner_id query int false "Filter by owner User ID"
-// @Param school_id query int false "Filter by School ID (Requires SAMA_CREW)"
+// @Param school_id query int false "Filter by School ID (Requires SAMA)"
 // @Param school_year query int false "Filter by School Year"
 // @Param semester query int false "Filter by Semester"
 // @Param limit query int false "Limit for pagination" default(10)
@@ -229,10 +229,10 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 	}
 
 	// Authorization:
-	// SAMA_CREW can fetch all activities (or filtered by any owner/school).
+	// SAMA can fetch all activities (or filtered by any owner/school).
 	// ADMIN can fetch activities for their school (optionally filtered by owner in their school).
 	// TCH can only fetch their own activities.
-	if claims.Role != "SAMA_CREW" && claims.Role != "ADMIN" && claims.Role != "TCH" {
+	if claims.Role != "SAMA" && claims.Role != "ADMIN" && claims.Role != "TCH" {
 		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions to list activities"})
 		return
 	}
@@ -253,7 +253,7 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 		schoolID = uint64(claims.SchoolID)
 		// If owner_id is also provided by ADMIN, ensure that owner belongs to the same school.
 	}
-	// SAMA_CREW has no restrictions on ownerID or schoolID.
+	// SAMA has no restrictions on ownerID or schoolID.
 
 	activities, err := c.activityService.GetAllActivities(uint(ownerID), uint(schoolID), limit, offset)
 	if err != nil {
@@ -303,7 +303,7 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 		return
 	}
 
-	// Authorization: Only owner or SAMA_CREW can update
+	// Authorization: Only owner or SAMA can update
 	if claims.Role != "SAMA" && claims.UserID != existingActivity.OwnerID {
 		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: You are not authorized to update this activity"})
 		return
@@ -384,8 +384,8 @@ func (c *ActivityController) DeleteActivity(ctx *gin.Context) {
 		return
 	}
 
-	// Authorization: Only owner or SAMA_CREW can delete
-	if claims.Role != "SAMA_CREW" && claims.UserID != existingActivity.OwnerID {
+	// Authorization: Only owner or SAMA can delete
+	if claims.Role != "SAMA" && claims.UserID != existingActivity.OwnerID {
 		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: You are not authorized to delete this activity"})
 		return
 	}

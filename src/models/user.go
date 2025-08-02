@@ -50,4 +50,4 @@ func (u *User) AfterFind(tx *gorm.DB) (err error) {
 	return nil
 }
 
-var ROLE = []string{"STD", "TCH", "ADMIN", "SAMA_CREW"}
+var ROLE = []string{"STD", "TCH", "ADMIN", "SAMA"}

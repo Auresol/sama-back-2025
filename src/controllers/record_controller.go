@@ -79,7 +79,7 @@ func (c *RecordController) CreateRecord(ctx *gin.Context) {
 
 	// // Authorization: Example - only teachers can create records for now.
 	// // You'll need to refine this based on your business logic (e.g., students creating their own records, etc.)
-	// if claims.Role != "TCH" && claims.Role != "ADMIN" && claims.Role != "SAMA_CREW" {
+	// if claims.Role != "TCH" && claims.Role != "ADMIN" && claims.Role != "SAMA" {
 	// 	ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions to create records"})
 	// 	return
 	// }
@@ -149,7 +149,7 @@ func (c *RecordController) GetRecordByID(ctx *gin.Context) {
 	// 2. Student can view their own records.
 	// 3. Teacher can view records where they are the assigned teacher, or records for students in their school.
 	// 4. Admin can view records for their school.
-	// if claims.Role != "SAMA_CREW" {
+	// if claims.Role != "SAMA" {
 	// 	isAuthorized := false
 	// 	// if claims.Role == "STD" && claims.UserID == record.StudentID {
 	// 	// 	isAuthorized = true
@@ -197,7 +197,7 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 	}
 
 	// Authorization:
-	// SAMA_CREW can fetch all records.
+	// SAMA can fetch all records.
 	// ADMIN can fetch records for their school.
 	// TCH can fetch records for their school or where they are the teacher.
 	// STD can only fetch their own records.
@@ -253,7 +253,7 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 			return
 		}
 		filterSchoolID = claims.SchoolID // Always filter by admin's school
-	case "SAMA_CREW":
+	case "SAMA":
 		// Sama Crew can see all records, no additional filtering needed based on their claims
 	default:
 		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions to list records"})
@@ -322,9 +322,9 @@ func (c *RecordController) UpdateRecord(ctx *gin.Context) {
 	// Authorization logic for updating a record:
 	// Example: Student can only update their own records if status is CREATED.
 	// Teacher can update records for students in their school if status is CREATED/SENDED.
-	// Admin/SAMA_CREW can update any record.
+	// Admin/SAMA can update any record.
 	isAuthorized := true
-	// if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" { // Admins/Sama Crew can edit any record
+	// if claims.Role == "SAMA" || claims.Role == "ADMIN" { // Admins/Sama Crew can edit any record
 	// 	isAuthorized = true
 	// } else if claims.Role == "STD" && claims.UserID == existingRecord.StudentID && existingRecord.Status == "CREATED" {
 	// 	isAuthorized = true
@@ -389,12 +389,12 @@ func (c *RecordController) DeleteRecord(ctx *gin.Context) {
 	}
 
 	// Authorization:
-	// SAMA_CREW can delete any record.
+	// SAMA can delete any record.
 	// ADMIN can delete records in their school.
 	// TCH can delete records they are assigned to or for students in their school.
 	// Students typically cannot delete records.
 	isAuthorized := true
-	// if claims.Role == "SAMA_CREW" {
+	// if claims.Role == "SAMA" {
 	// 	isAuthorized = true
 	// } else if claims.Role == "TCH" && (claims.UserID == recordToDelete.TeacherID || claims.SchoolID == recordToDelete.SchoolID) {
 	// 	isAuthorized = true
@@ -467,9 +467,9 @@ func (c *RecordController) SendRecord(ctx *gin.Context) {
 
 	// Authorization & Status Check:
 	// Only the student who owns the record, if status is 'CREATED', can send it.
-	// Or ADMIN/SAMA_CREW can send any record.
+	// Or ADMIN/SAMA can send any record.
 	isAuthorized := false
-	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
+	if claims.Role == "SAMA" || claims.Role == "ADMIN" {
 		isAuthorized = true
 	} else if claims.Role == "STD" && claims.UserID == existingRecord.StudentID && existingRecord.Status == "CREATED" {
 		isAuthorized = true
@@ -547,10 +547,10 @@ func (c *RecordController) ApproveRecord(ctx *gin.Context) {
 	}
 
 	// Authorization & Status Check:
-	// Only the assigned teacher or admin/SAMA_CREW can approve.
+	// Only the assigned teacher or admin/SAMA can approve.
 	// Record must be in 'SENDED' status.
 	isAuthorized := false
-	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
+	if claims.Role == "SAMA" || claims.Role == "ADMIN" {
 		isAuthorized = true
 	} else if claims.Role == "TCH" && claims.UserID == *existingRecord.TeacherID && existingRecord.Status == "SENDED" {
 		isAuthorized = true
@@ -628,10 +628,10 @@ func (c *RecordController) RejectRecord(ctx *gin.Context) {
 	}
 
 	// Authorization & Status Check:
-	// Only the assigned teacher or admin/SAMA_CREW can reject.
+	// Only the assigned teacher or admin/SAMA can reject.
 	// Record must be in 'SENDED' status.
 	isAuthorized := false
-	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
+	if claims.Role == "SAMA" || claims.Role == "ADMIN" {
 		isAuthorized = true
 	} else if claims.Role == "TCH" && claims.UserID == *existingRecord.TeacherID && existingRecord.Status == "SENDED" {
 		isAuthorized = true
@@ -716,9 +716,9 @@ func (c *RecordController) UnsendRecord(ctx *gin.Context) {
 	}
 
 	// Authorization & Status Check:
-	// Only the student who sent the record (if status is 'SENDED'), or ADMIN/SAMA_CREW can unsend it.
+	// Only the student who sent the record (if status is 'SENDED'), or ADMIN/SAMA can unsend it.
 	isAuthorized := false
-	if claims.Role == "SAMA_CREW" || claims.Role == "ADMIN" {
+	if claims.Role == "SAMA" || claims.Role == "ADMIN" {
 		isAuthorized = true
 	} else if claims.Role == "STD" && claims.UserID == existingRecord.StudentID && existingRecord.Status == "SENDED" {
 		isAuthorized = true

@@ -13,14 +13,14 @@ import (
 
 // AuthController manages HTTP requests for user authentication and account management.
 type AuthController struct {
-	userService *services.UserService // Renamed from UserService for consistency with previous updates
+	authService *services.AuthService // Renamed from UserService for consistency with previous updates
 	validate    *validator.Validate
 }
 
 // NewAuthController creates a new AuthController.
-func NewAuthController(userService *services.UserService, validate *validator.Validate) *AuthController {
+func NewAuthController(authService *services.AuthService, validate *validator.Validate) *AuthController {
 	return &AuthController{
-		userService: userService,
+		authService: authService,
 		validate:    validate,
 	}
 }
@@ -48,7 +48,13 @@ type LoginRequest struct {
 
 // LoginResponse represents the response body for successful login.
 type LoginResponse struct {
-	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	Token        string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+}
+
+// RefreshTokenRequest represents the request body for generating new token.
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 }
 
 // ValidateOtpRequest represents the request body for validating an OTP and resetting password.
@@ -91,7 +97,7 @@ func (h *AuthController) RegisterUser(c *gin.Context) {
 		Language:  req.Language,
 	}
 
-	if err := h.userService.RegisterUser(user); err != nil {
+	if err := h.authService.RegisterUser(user); err != nil {
 		if err.Error() == "user with this email already exists" {
 			c.JSON(http.StatusConflict, ErrorResponse{Message: err.Error()})
 			return
@@ -124,7 +130,7 @@ func (h *AuthController) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := h.userService.Login(req.Email, req.Password)
+	token, refreshToken, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
 		if err.Error() == "invalid credentials" || err.Error() == "user account is deactivated" {
 			c.JSON(http.StatusUnauthorized, ErrorResponse{Message: err.Error()})
@@ -134,7 +140,7 @@ func (h *AuthController) Login(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, LoginResponse{Token: token})
+	c.JSON(http.StatusOK, LoginResponse{Token: token, RefreshToken: refreshToken})
 }
 
 // RequestOtpRequest represents the request body for requesting an OTP.
@@ -214,4 +220,45 @@ func (h *AuthController) ValidateOtp(c *gin.Context) {
 
 	// For demonstration, returning a dummy token
 	c.JSON(http.StatusOK, "Good to go")
+}
+
+// RefreshToken handles refreshing a JWT access token using a refresh token.
+// @Summary Refresh access token
+// @Description Exchanges a valid refresh token for a new access token and refresh token.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param refresh_token_request body RefreshTokenRequest true "Refresh token"
+// @Success 200 {object} LoginResponse "New access and refresh tokens"
+// @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
+// @Failure 401 {object} ErrorResponse "Invalid or expired refresh token"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /refresh-token [post]
+func (h *AuthController) RefreshToken(c *gin.Context) {
+	var req RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+		return
+	}
+
+	// TODO: Call a service method to handle refresh token logic
+	// This service method would:
+	// 1. Validate the refresh token (e.g., check against a database of valid refresh tokens)
+	// 2. If valid, generate a new access token and a new refresh token
+	// 3. Invalidate the old refresh token (optional, but recommended for security)
+	// Example:
+	newAccessToken, newRefreshToken, err := h.authService.RefreshToken(req.RefreshToken)
+	if err != nil {
+		if err.Error() == "invalid or expired refresh token" {
+			c.JSON(http.StatusUnauthorized, ErrorResponse{Message: err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to generate refresh token: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, LoginResponse{
+		Token:        newAccessToken,
+		RefreshToken: newRefreshToken,
+	})
 }

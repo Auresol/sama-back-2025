@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"sama/sama-backend-2025/src/middlewares"
+	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/services"
 
 	// For JWT claims
@@ -45,7 +46,7 @@ func NewUserController(
 // @Success 200 {object} models.User "User profile retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized (missing or invalid token)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /me [get]
+// @Router /user/me [get]
 func (h *UserController) GetMyProfile(c *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
@@ -273,7 +274,7 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /user/activity [get]
-func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
+func (c *UserController) GetRelatedActivities(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
@@ -308,6 +309,10 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 // @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
 // @Tags User
 // @Security BearerAuth
+// @Param activity_id query int false "Filter by Activity ID"
+// @Param status query string false "Filter by Status (CREATED, SENDED, APPROVED, REJECTED)"
+// @Param limit query int false "Limit for pagination" default(10)
+// @Param offset query int false "Offset for pagination" default(0)
 // @Produce json
 // @Success 200 {array} models.Record "List of related activities retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
@@ -320,18 +325,33 @@ func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
 		return
 	}
 
-	// Example placeholder for activities:
-	// activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
-	// if err != nil {
-	//     ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
-	//     return
-	// }
+	var filterActivityID uint
+	var filterStatus string
+
+	if aID, err := strconv.ParseUint(ctx.DefaultQuery("activity_id", "0"), 10, 64); err == nil {
+		filterActivityID = uint(aID)
+	}
+	filterStatus = ctx.DefaultQuery("status", "")
+
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
 
-	records, err := c.recordService.GetAllRecords(claims.UserID, 0, 0, "", limit, offset)
+	records := make([]models.Record, 0)
+	var err error
+
+	switch claims.Role {
+	case "TCH":
+		records, err = c.recordService.GetStudentRecords(claims.UserID, filterActivityID, filterStatus, limit, offset)
+
+	case "STD":
+		records, err = c.recordService.GetTeacherRecords(claims.UserID, filterActivityID, filterStatus, limit, offset)
+
+	default:
+		records, err = c.recordService.GetAllRecords(0, 0, filterActivityID, filterStatus, limit, offset)
+	}
+
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve my records: " + err.Error()})
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related records: " + err.Error()})
 		return
 	}
 

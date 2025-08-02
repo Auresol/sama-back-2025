@@ -9,10 +9,11 @@ import (
 )
 
 type Config struct {
-	Database DatabaseConfig
-	Server   ServerConfig
-	JWT      JWTConfig
-	Logging  LoggingConfig
+	Database   DatabaseConfig
+	Server     ServerConfig
+	JWT        JWTConfig
+	RefreshJWT RefreshJWTConfig
+	Logging    LoggingConfig
 }
 
 type DatabaseConfig struct {
@@ -31,7 +32,12 @@ type ServerConfig struct {
 
 type JWTConfig struct {
 	Secret string
-	Expiry string
+	Expiry int
+}
+
+type RefreshJWTConfig struct {
+	Secret string
+	Expiry int
 }
 
 type LoggingConfig struct {
@@ -60,7 +66,11 @@ func LoadConfig() *Config {
 		},
 		JWT: JWTConfig{
 			Secret: getEnv("JWT_SECRET", "your-secret-key-here"),
-			Expiry: getEnv("JWT_EXPIRY", "24h"),
+			Expiry: getIntEnv("JWT_EXPIRY", 7*24*60), // 1 day
+		},
+		RefreshJWT: RefreshJWTConfig{
+			Secret: getEnv("REFRESH_JWT_SECRET", "your-secret-key-here"),
+			Expiry: getIntEnv("REFRESH_JWT_EXPIRY", 30*24*60), // 1 month
 		},
 		Logging: LoggingConfig{
 			Level: getEnv("LOG_LEVEL", "info"),
@@ -76,11 +86,9 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-func getEnvAsInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
-		}
+func getIntEnv(key string, defaultValue int) int {
+	if value, err := strconv.Atoi(os.Getenv(key)); err == nil {
+		return value
 	}
 	return defaultValue
 }
