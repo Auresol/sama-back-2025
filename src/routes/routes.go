@@ -69,8 +69,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		authRoutes.GET("/user/:id", userController.GetUserByID)
 		authRoutes.PUT("/user/:id", userController.UpdateUserProfile)
 		authRoutes.DELETE("/user/:id", userController.DeleteUser)
-		authRoutes.GET("/user/activity", userController.GetRelatedActivities)
-		authRoutes.GET("/user/record", userController.GetRelatedRecords)
+		authRoutes.GET("/user/:id/activity", userController.GetAssignedActivities)
 
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
 		authRoutes.PUT("/school/:id", schoolController.UpdateSchool)

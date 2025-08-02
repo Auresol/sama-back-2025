@@ -56,6 +56,14 @@ type RejectRecordRequest struct {
 type UnsendRecordRequest struct {
 }
 
+// PaginateRecordsResponse represents the response body for retrieve records with paginate
+type PaginateRecordsResponse struct {
+	Records []models.Record `json:"data"`
+	Offset  int             `json:"offset" example:"0"`
+	Limit   int             `json:"limit" example:"10"`
+	Total   int             `json:"total" example:"20"`
+}
+
 // CreateRecord handles creating a new record.
 // @Summary Create a new record
 // @Description Create a new activity record with associated student, teacher, school, and activity details.
@@ -176,14 +184,16 @@ func (c *RecordController) GetRecordByID(ctx *gin.Context) {
 // @Tags Record
 // @Security BearerAuth
 // @Produce json
-// @Param school_id query int false "Filter by School ID"
+// @Param school_id query int false "Filter by School ID (SAMA)"
 // @Param student_id query int false "Filter by Student ID"
 // @Param teacher_id query int false "Filter by Teacher ID"
 // @Param activity_id query int false "Filter by Activity ID"
 // @Param status query string false "Filter by Status (CREATED, SENDED, APPROVED, REJECTED)"
+// @Param semester query int true "School semester"
+// @Param school_year query int true "School year"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
-// @Success 200 {array} models.Record "List of records retrieved successfully"
+// @Success 200 {object} PaginateRecordsResponse "List of records retrieved successfully"
 // @Failure 400 {object} ErrorResponse "Invalid query parameters"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
@@ -196,6 +206,18 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 		return
 	}
 
+	semester, err := strconv.Atoi(ctx.Query("semester"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate semester param: " + err.Error()})
+		return
+	}
+
+	schoolYear, err := strconv.Atoi(ctx.Query("school_year"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate school_year param: " + err.Error()})
+		return
+	}
+
 	// Authorization:
 	// SAMA can fetch all records.
 	// ADMIN can fetch records for their school.
@@ -204,10 +226,10 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 	var filterSchoolID, filterStudentID, filterTeacherID, filterActivityID uint
 	var filterStatus string
 
-	// Parse query parameters
-	if sID, err := strconv.ParseUint(ctx.DefaultQuery("school_id", "0"), 10, 64); err == nil {
-		filterSchoolID = uint(sID)
+	if schID, err := strconv.ParseUint(ctx.DefaultQuery("school_id", "0"), 10, 64); err == nil {
+		filterSchoolID = uint(schID)
 	}
+
 	if stID, err := strconv.ParseUint(ctx.DefaultQuery("student_id", "0"), 10, 64); err == nil {
 		filterStudentID = uint(stID)
 	}
@@ -260,9 +282,10 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 		return
 	}
 
-	records, err := c.recordService.GetAllRecords(
+	records, count, err := c.recordService.GetAllRecords(
 		filterStudentID, filterTeacherID, filterActivityID,
 		filterStatus,
+		semester, schoolYear,
 		limit, offset,
 	)
 	if err != nil {
@@ -270,7 +293,14 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, records)
+	response := PaginateRecordsResponse{
+		Records: records,
+		Limit:   limit,
+		Offset:  offset,
+		Total:   count,
+	}
+
+	ctx.JSON(http.StatusOK, response)
 }
 
 // UpdateRecord handles updating an existing record.

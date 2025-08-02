@@ -81,7 +81,7 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, limit, off
 	return activities, err
 }
 
-func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint, limit, offset int) ([]models.ActivityWithStatistic, error) {
+func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint, semester, schoolYear int) ([]models.ActivityWithStatistic, error) {
 	var activities []models.ActivityWithStatistic
 
 	// Query all activities assigned to user based on 3 condition
@@ -98,6 +98,8 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint
 		FROM activities ac
 		LEFT JOIN records r ON r.activity_id = ac.id
 		WHERE ac.school_id = ? and
+			  r.semester = ? and
+			  r.school_year = ? and
 		(
 		-- Condition 1: Check general coverage for the user's "junior" status
 			-- We'll get the user's is_junior status from their classroom
@@ -133,7 +135,7 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint
 		ORDER BY ac.is_required DESC, ac.id ASC
 	`
 
-	if err := r.db.Raw(query, schoolID, userID, userID, userID).Scan(&activities).Error; err != nil {
+	if err := r.db.Raw(query, schoolID, semester, schoolYear, userID, userID, userID).Scan(&activities).Error; err != nil {
 		return nil, fmt.Errorf("failed to get activities: %w", err)
 	}
 

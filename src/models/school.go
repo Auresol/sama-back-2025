@@ -13,6 +13,7 @@ type School struct {
 	ThaiName                string    `json:"thai_name" validate:"required"`
 	EnglishName             string    `json:"english_name" validate:"required"`
 	ShortName               string    `json:"short_name" gorm:"uniqueIndex" validate:"required"` // Added unique index for short_name
+	SchoolLogoUrl           *string   `json:"school_logo_url"`
 	Email                   *string   `json:"email,omitempty" validate:"email"`
 	Location                *string   `json:"location,omitempty"`
 	Phone                   *string   `json:"phone,omitempty" validate:"e164"` // e164 for phone number validation

@@ -129,27 +129,10 @@ func (s *RecordService) GetRecordByID(id uint) (*models.Record, error) {
 func (s *RecordService) GetAllRecords(
 	studentID, teacherID, activityID uint,
 	status string,
+	semester, schoolYear int,
 	limit, offset int,
-) ([]models.Record, error) {
-	return s.recordRepo.GetAllRecords(studentID, teacherID, activityID, status, limit, offset)
-}
-
-// GetAllRecords retrieves all records with filtering and pagination.
-func (s *RecordService) GetTeacherRecords(
-	teacherID, activityID uint,
-	status string,
-	limit, offset int,
-) ([]models.Record, error) {
-	return s.recordRepo.GetAllRecords(0, teacherID, activityID, status, limit, offset)
-}
-
-// GetAllRecords retrieves all records with filtering and pagination.
-func (s *RecordService) GetStudentRecords(
-	studentID, activityID uint,
-	status string,
-	limit, offset int,
-) ([]models.Record, error) {
-	return s.recordRepo.GetAllRecords(studentID, 0, activityID, status, limit, offset)
+) ([]models.Record, int, error) {
+	return s.recordRepo.GetAllRecords(studentID, teacherID, activityID, status, semester, schoolYear, limit, offset)
 }
 
 // UpdateRecord updates an existing record.

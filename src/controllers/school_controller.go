@@ -39,6 +39,7 @@ type CreateSchoolRequest struct {
 	ThaiName                string    `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยา"`
 	EnglishName             string    `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
 	ShortName               string    `json:"short_name" binding:"required" example:"SMK"`
+	SchoolLogoUrl           *string   `json:"school_logo_url"`
 	Email                   *string   `json:"email,omitempty" binding:"email" example:"info@smk.ac.th"`
 	DefaultActivityDeadline time.Time `json:"default_activity_deadline" example:"2025-07-28T15:49:03.123Z"`
 	Location                *string   `json:"location,omitempty" example:"Bangkok, Thailand"`
@@ -53,6 +54,7 @@ type UpdateSchoolRequest struct {
 	ThaiName                string    `json:"thai_name" binding:"required" example:"โรงเรียนสามัคคีวิทยา"`
 	EnglishName             string    `json:"english_name" binding:"required" example:"Samakkee Wittaya School"`
 	ShortName               string    `json:"short_name" binding:"required" example:"SMK"`
+	SchoolLogoUrl           *string   `json:"school_logo_url"`
 	Email                   *string   `json:"email,omitempty" binding:"email" example:"info@smk.ac.th"`
 	DefaultActivityDeadline time.Time `json:"default_activity_deadline"`
 	Location                *string   `json:"location,omitempty" example:"Bangkok, Thailand"`
@@ -533,8 +535,8 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param school_id path int true "School ID"
-// @Param limit query int false "Limit for pagination" default(10)
-// @Param offset query int false "Offset for pagination" default(0)
+// @Param classroom query string false "Classroom string to query"
+// @Param activity_id query string false "Activity id list seperate by \"|\""
 // @Success 200 {array} models.User "List of users retrieved successfully"
 // @Failure 400 {object} ErrorResponse "Invalid school ID or pagination parameters"
 // @Failure 401 {object} ErrorResponse "Unauthorized"

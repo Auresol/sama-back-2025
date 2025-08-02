@@ -108,10 +108,10 @@ func (s *ActivityService) UpdateActivity(activity *models.Activity) error {
 	return s.activityRepo.UpdateActivity(activity)
 }
 
-func (r *ActivityService) GetAssignedActivitiesByUserID(userID, schoolID uint, limit, offset int) ([]models.ActivityWithStatistic, error) {
+func (r *ActivityService) GetAssignedActivitiesByUserID(userID, schoolID uint, semester, schoolYear int) ([]models.ActivityWithStatistic, error) {
 
-	fmt.Printf("Debug: s.activityRepo is: %v\n", r.activityRepo)
-	activities, err := r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, limit, offset)
+	// fmt.Printf("Debug: s.activityRepo is: %v\n", r.activityRepo)
+	activities, err := r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve activities: %w", err)
 	}

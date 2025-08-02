@@ -6,10 +6,8 @@ import (
 	"strconv"
 
 	"sama/sama-backend-2025/src/middlewares"
-	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/services"
 
-	// For JWT claims
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -265,24 +263,42 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 
 // GetAssignedActivity retrieves a list of activities related to the authenticated user.
 // This includes activities where the user is the owner, or part of exclusive classrooms/students.
-// @Summary Get activities related to the authenticated user
+// @Summary Get activities related to the user
 // @Description Retrieve a list of activities that are assigned to or owned by the authenticated user.
 // @Tags User
 // @Security BearerAuth
+// @Param id path int true "User ID to get"
+// @Param semester query int true "School semester"
+// @Param school_year query int true "School year"
 // @Produce json
 // @Success 200 {array} models.ActivityWithStatistic "List of related activities retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/activity [get]
-func (c *UserController) GetRelatedActivities(ctx *gin.Context) {
+// @Router /user/{id}/activity [get]
+func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
 		return
 	}
 
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid user ID"})
+		return
+	}
+
+	semester, err := strconv.Atoi(ctx.Query("semester"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate semester param: " + err.Error()})
+		return
+	}
+
+	schoolYear, err := strconv.Atoi(ctx.Query("school_year"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate school_year param: " + err.Error()})
+		return
+	}
 
 	// TODO: Implement the service call to fetch activities related to claims.UserID
 	// This service method would need to query activities where:
@@ -293,7 +309,7 @@ func (c *UserController) GetRelatedActivities(ctx *gin.Context) {
 	// This will be a more complex query in the repository.
 
 	// Example placeholder for activities:
-	activities, err := c.activityService.GetAssignedActivitiesByUserID(claims.UserID, claims.SchoolID, limit, offset)
+	activities, err := c.activityService.GetAssignedActivitiesByUserID(uint(id), claims.SchoolID, semester, schoolYear)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
 		return
@@ -301,62 +317,6 @@ func (c *UserController) GetRelatedActivities(ctx *gin.Context) {
 
 	// For now, returning a placeholder response
 	ctx.JSON(http.StatusOK, activities) // Return an empty array or mock data
-}
-
-// GetRelatedRecords retrieves a list of record related to the authenticated user.
-// This include records that user created (for student) or checking (for teacher)
-// @Summary Get records related to the authenticated user
-// @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
-// @Tags User
-// @Security BearerAuth
-// @Param activity_id query int false "Filter by Activity ID"
-// @Param status query string false "Filter by Status (CREATED, SENDED, APPROVED, REJECTED)"
-// @Param limit query int false "Limit for pagination" default(10)
-// @Param offset query int false "Offset for pagination" default(0)
-// @Produce json
-// @Success 200 {array} models.Record "List of related activities retrieved successfully"
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/record [get]
-func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
-	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
-	if !ok {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-		return
-	}
-
-	var filterActivityID uint
-	var filterStatus string
-
-	if aID, err := strconv.ParseUint(ctx.DefaultQuery("activity_id", "0"), 10, 64); err == nil {
-		filterActivityID = uint(aID)
-	}
-	filterStatus = ctx.DefaultQuery("status", "")
-
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
-
-	records := make([]models.Record, 0)
-	var err error
-
-	switch claims.Role {
-	case "TCH":
-		records, err = c.recordService.GetStudentRecords(claims.UserID, filterActivityID, filterStatus, limit, offset)
-
-	case "STD":
-		records, err = c.recordService.GetTeacherRecords(claims.UserID, filterActivityID, filterStatus, limit, offset)
-
-	default:
-		records, err = c.recordService.GetAllRecords(0, 0, filterActivityID, filterStatus, limit, offset)
-	}
-
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related records: " + err.Error()})
-		return
-	}
-
-	// For now, returning a placeholder response
-	ctx.JSON(http.StatusOK, records) // Return an empty array or mock data
 }
 
 // // GetStatisticByID retrieves a list of record related to the authenticated user.

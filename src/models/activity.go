@@ -31,6 +31,9 @@ type Activity struct {
 	FinishedAmount int    `json:"finished_amount" validate:"required"`
 	UpdateProtocol string `json:"update_protocol,omitempty" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
 
+	SchoolYear int `json:"school_year" validate:"required,gt=0"`
+	Semester   int `json:"semester" validate:"required,gt=0"`
+
 	School                    School       `json:"-" gorm:"foreignKey:SchoolID"`
 	Owner                     User         `json:"-" gorm:"foreignKey:OwnerID"`
 	ExclusiveStudentObjects   []*User      `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
