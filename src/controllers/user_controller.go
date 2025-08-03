@@ -268,8 +268,8 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 // @Tags User
 // @Security BearerAuth
 // @Param id path int true "User ID to get"
-// @Param semester query int true "School semester"
-// @Param school_year query int true "School year"
+// @Param semester query int false "School semester"
+// @Param school_year query int false "School year"
 // @Produce json
 // @Success 200 {array} models.ActivityWithStatistic "List of related activities retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
@@ -288,17 +288,8 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 		return
 	}
 
-	semester, err := strconv.Atoi(ctx.Query("semester"))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate semester param: " + err.Error()})
-		return
-	}
-
-	schoolYear, err := strconv.Atoi(ctx.Query("school_year"))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate school_year param: " + err.Error()})
-		return
-	}
+	semester, _ := strconv.ParseUint(ctx.DefaultQuery("semester", "0"), 10, 64)
+	schoolYear, _ := strconv.ParseUint(ctx.DefaultQuery("school_year", "0"), 10, 64)
 
 	// TODO: Implement the service call to fetch activities related to claims.UserID
 	// This service method would need to query activities where:
@@ -309,7 +300,7 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 	// This will be a more complex query in the repository.
 
 	// Example placeholder for activities:
-	activities, err := c.activityService.GetAssignedActivitiesByUserID(uint(id), claims.SchoolID, semester, schoolYear)
+	activities, err := c.activityService.GetAssignedActivitiesByUserID(uint(id), claims.SchoolID, uint(semester), uint(schoolYear))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
 		return

@@ -7,13 +7,13 @@ import (
 )
 
 type Classroom struct {
-	ID        uint   `gorm:"primarykey"`
+	ID        uint   `json:"id" gorm:"primarykey"`
 	SchoolID  uint   `json:"school_id" gorm:"uniqueIndex:idx_classroom,priority:1" validate:"required"`
 	Classroom string `json:"classroom" gorm:"uniqueIndex:idx_classroom,priority:2" validate:"required"`
 	IsJunior  bool   `json:"-"`
 
-	School     School      `json:"-"`
-	Activities []*Activity `json:"-" gorm:"many2many:activity_exclusive_classroom"`
+	School     School     `json:"-"`
+	Activities []Activity `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`

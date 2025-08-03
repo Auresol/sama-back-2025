@@ -189,8 +189,6 @@ func (c *RecordController) GetRecordByID(ctx *gin.Context) {
 // @Param teacher_id query int false "Filter by Teacher ID"
 // @Param activity_id query int false "Filter by Activity ID"
 // @Param status query string false "Filter by Status (CREATED, SENDED, APPROVED, REJECTED)"
-// @Param semester query int true "School semester"
-// @Param school_year query int true "School year"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
 // @Success 200 {object} PaginateRecordsResponse "List of records retrieved successfully"
@@ -203,18 +201,6 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-		return
-	}
-
-	semester, err := strconv.Atoi(ctx.Query("semester"))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate semester param: " + err.Error()})
-		return
-	}
-
-	schoolYear, err := strconv.Atoi(ctx.Query("school_year"))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate school_year param: " + err.Error()})
 		return
 	}
 
@@ -285,7 +271,6 @@ func (c *RecordController) GetAllRecords(ctx *gin.Context) {
 	records, count, err := c.recordService.GetAllRecords(
 		filterStudentID, filterTeacherID, filterActivityID,
 		filterStatus,
-		semester, schoolYear,
 		limit, offset,
 	)
 	if err != nil {

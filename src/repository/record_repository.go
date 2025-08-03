@@ -46,12 +46,11 @@ func (r *RecordRepository) GetRecordByID(id uint) (*models.Record, error) {
 func (r *RecordRepository) GetAllRecords(
 	studentID, teacherID, activityID uint,
 	status string,
-	semester, schoolYear int,
 	limit, offset int,
 ) ([]models.Record, int, error) {
 	var records []models.Record
 	var count int64
-	query := r.db.Model(&models.Record{}).Where("semester = ? AND school_year = ?", semester, schoolYear)
+	query := r.db.Model(&models.Record{})
 
 	if studentID != 0 {
 		query = query.Where("student_id = ?", studentID)

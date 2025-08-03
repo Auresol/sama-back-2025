@@ -27,17 +27,17 @@ type Activity struct {
 	IsActive bool       `json:"is_active" validate:"required"` // Still able to create new records
 	Deadline *time.Time `json:"deadline,omitempty"`            // The date when activity is closed (nullable)
 
-	FinishedUnit   string `json:"finished_condition" validate:"required,oneof=TIMES HOURS"`
-	FinishedAmount int    `json:"finished_amount" validate:"required"`
+	FinishedUnit   string `json:"finished_unit" validate:"required,oneof=TIMES HOURS"`
+	FinishedAmount uint   `json:"finished_amount" validate:"required"`
 	UpdateProtocol string `json:"update_protocol,omitempty" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
 
-	SchoolYear int `json:"school_year" validate:"required,gt=0"`
-	Semester   int `json:"semester" validate:"required,gt=0"`
+	SchoolYear uint `json:"school_year" validate:"required,gt=0"`
+	Semester   uint `json:"semester" validate:"required,gt=0"`
 
-	School                    School       `json:"-" gorm:"foreignKey:SchoolID"`
-	Owner                     User         `json:"-" gorm:"foreignKey:OwnerID"`
-	ExclusiveStudentObjects   []*User      `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
-	ExclusiveClassroomObjects []*Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
+	School                    School      `json:"-" gorm:"foreignKey:SchoolID"`
+	Owner                     User        `json:"-" gorm:"foreignKey:OwnerID"`
+	ExclusiveStudentObjects   []User      `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
+	ExclusiveClassroomObjects []Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
@@ -52,10 +52,15 @@ func (Activity) TableName() string {
 // AfterFind is a GORM callback that runs after a record is found.
 // It populates the `Classrooms []string` field from the `ClassroomList` association.
 func (a *Activity) AfterFind(tx *gorm.DB) (err error) {
-	// Ensure ClassroomList is loaded before attempting to flatten
-	// This requires preloading ClassroomList in your repository's Get methods.
-	for _, obj := range a.ExclusiveClassroomObjects {
-		a.ExclusiveClassrooms = append(a.ExclusiveClassrooms, obj.Classroom)
+
+	a.ExclusiveClassrooms = make([]string, len(a.ExclusiveClassroomObjects))
+	for i, obj := range a.ExclusiveClassroomObjects {
+		a.ExclusiveClassrooms[i] = obj.Classroom
+	}
+
+	a.ExclusiveStudentIDs = make([]uint, len(a.ExclusiveStudentObjects))
+	for i, obj := range a.ExclusiveStudentObjects {
+		a.ExclusiveStudentIDs[i] = obj.ID
 	}
 	return nil
 }

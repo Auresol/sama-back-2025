@@ -45,8 +45,8 @@ type CreateSchoolRequest struct {
 	Location                *string   `json:"location,omitempty" example:"Bangkok, Thailand"`
 	Phone                   *string   `json:"phone,omitempty" binding:"e164" example:"+66812345678"`
 	Classrooms              []string  `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
-	SchoolYear              int       `json:"school_year" binding:"required,gt=0" example:"2568"`
-	Semester                int       `json:"semester" binding:"required,gt=0" example:"1"`
+	SchoolYear              uint      `json:"school_year" binding:"required,gt=0" example:"2568"`
+	Semester                uint      `json:"semester" binding:"required,gt=0" example:"1"`
 }
 
 // UpdateSchoolRequest represents the request body for updating an existing school.
@@ -162,7 +162,7 @@ func (h *SchoolController) GetSchoolByID(c *gin.Context) {
 	// Authorization:
 	// SAMA can access any school.
 	// ADMIN/TCH/STD can access their own school's data.
-	if !(claims.Role != "SAMA" && claims.SchoolID != uint(id)) {
+	if claims.Role != "SAMA" && claims.SchoolID != uint(id) {
 		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Not authorized to access this school's data"})
 		return
 	}

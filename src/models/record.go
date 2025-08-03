@@ -8,7 +8,7 @@ import (
 
 // Record represents an activity record, mapped to a PostgreSQL table.
 type Record struct {
-	ID uint `gorm:"primarykey"`
+	ID uint `json:"id" gorm:"primarykey"`
 
 	ActivityID uint                   `json:"activity_id" validate:"required"`
 	Data       map[string]interface{} `json:"data" gorm:"serializer:json" validate:"required"`
@@ -17,9 +17,6 @@ type Record struct {
 	// Foreign keys to other models
 	StudentID uint  `json:"student_id" gorm:"index" validate:"required,gt=0"`  // Index for faster lookups
 	TeacherID *uint `json:"teacher_id,omitempty" gorm:"index" validate:"gt=0"` // Index for faster lookups
-
-	SchoolYear int `json:"school_year" validate:"required,gt=0"`
-	Semester   int `json:"semester" validate:"required,gt=0"`
 
 	Amount int `json:"amount" validate:"required"`
 

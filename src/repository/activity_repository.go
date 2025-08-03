@@ -29,7 +29,7 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 
 		// TODO: use virtual table + join everything
 
-		activity.ExclusiveClassroomObjects = make([]*models.Classroom, len(activity.ExclusiveClassrooms))
+		activity.ExclusiveClassroomObjects = make([]models.Classroom, len(activity.ExclusiveClassrooms))
 		// Get classroom's id first
 		for i, name := range activity.ExclusiveClassrooms {
 			if err := tx.Select("id").Where("school_id = ? AND classroom = ?", activity.SchoolID, name).First(&activity.ExclusiveClassroomObjects[i]).Error; err != nil {
@@ -37,8 +37,16 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 			}
 		}
 
+		activity.ExclusiveStudentObjects = make([]models.User, len(activity.ExclusiveStudentIDs))
+		// Get student's id first
+		for i, id := range activity.ExclusiveStudentIDs {
+			if err := tx.Select("id").Where("id = ?", id).First(&activity.ExclusiveStudentObjects[i]).Error; err != nil {
+				return fmt.Errorf("failed to find student %d: %w", id, err)
+			}
+		}
+
 		// Create activity with exclusiveClassroom association, omit the upesrt of classroom
-		err := tx.Model(activity).Omit("ExclusiveClassroomObjects.*").Create(activity).Error
+		err := tx.Model(activity).Omit("ExclusiveClassroomObjects.*").Omit("ExclusiveStudentObjects.*").Create(activity).Error
 		if err != nil {
 			return fmt.Errorf("failed to create activity: %w", err)
 		}
@@ -62,9 +70,12 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) 
 
 // GetAllActivities retrieves all activities with pagination, optionally filtering by owner ID or school ID/year/semester.
 // This method can be expanded for more complex filtering.
-func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, limit, offset int) ([]models.Activity, error) {
+func (r *ActivityRepository) GetAllActivities(ownerID, schoolID, semester, schoolYear uint, limit, offset int) ([]models.Activity, error) {
 	var activities []models.Activity
-	query := r.db.Model(&models.Activity{}) // Always preload students
+	query := r.db.Where("semester = ? AND school_year = ?", semester, schoolYear).
+		Preload("ExclusiveStudentObjects").
+		Preload("ExclusiveClassroomObjects").
+		Model(&models.Activity{})
 
 	if ownerID != 0 {
 		query = query.Where("owner_id = ?", ownerID)
@@ -81,8 +92,8 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, limit, off
 	return activities, err
 }
 
-func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint, semester, schoolYear int) ([]models.ActivityWithStatistic, error) {
-	var activities []models.ActivityWithStatistic
+func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear uint) ([]models.ActivityWithStatistic, error) {
+	activities := make([]models.ActivityWithStatistic, 0)
 
 	// Query all activities assigned to user based on 3 condition
 	// 1. activities is for junior or senior
@@ -91,15 +102,17 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint
 	query := `
 		SELECT 
 			ac.*,
+			COALESCE(ac.deadline, s.default_activity_deadline) AS deadline,
 			SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
 			SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
 			SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
 			SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records	
 		FROM activities ac
 		LEFT JOIN records r ON r.activity_id = ac.id
+		LEFT JOIN schools s ON ac.school_id = s.id
 		WHERE ac.school_id = ? and
-			  r.semester = ? and
-			  r.school_year = ? and
+			  ac.semester = ? and
+			  ac.school_year = ? and
 		(
 		-- Condition 1: Check general coverage for the user's "junior" status
 			-- We'll get the user's is_junior status from their classroom
@@ -131,12 +144,12 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint
 				AND aes.user_id = ? -- Target user ID
 			)
 		)
-		GROUP BY ac.id
+		GROUP BY ac.id, s.default_activity_deadline
 		ORDER BY ac.is_required DESC, ac.id ASC
 	`
 
 	if err := r.db.Raw(query, schoolID, semester, schoolYear, userID, userID, userID).Scan(&activities).Error; err != nil {
-		return nil, fmt.Errorf("failed to get activities: %w", err)
+		return activities, fmt.Errorf("failed to get activities: %w", err)
 	}
 
 	return activities, nil
@@ -164,15 +177,23 @@ func (r *ActivityRepository) UpdateActivity(activity *models.Activity) error {
 			// reset all record status to CREATED
 			err := tx.Model(&models.Record{}).Where("activity_id = ? AND semester = ? AND school_year = ?", activity.ID, school.Semester, school.SchoolYear).UpdateColumn("status", "CREATED").Error
 			if err != nil {
-				return fmt.Errorf("failed to update records (update protocol = re-evaulate all): %w", err)
+				return fmt.Errorf("failed to update records (update protocol is re-evaulate all): %w", err)
 			}
 		}
 
-		activity.ExclusiveClassroomObjects = make([]*models.Classroom, len(activity.ExclusiveClassrooms))
+		activity.ExclusiveClassroomObjects = make([]models.Classroom, len(activity.ExclusiveClassrooms))
 		// Get classroom's id first
 		for i, name := range activity.ExclusiveClassrooms {
 			if err := tx.Select("id").Where("school_id = ? AND classroom = ?", activity.SchoolID, name).First(&activity.ExclusiveClassroomObjects[i]).Error; err != nil {
 				return fmt.Errorf("failed to find classroom '%s': %w", name, err)
+			}
+		}
+
+		activity.ExclusiveStudentObjects = make([]models.User, len(activity.ExclusiveStudentIDs))
+		// Get student's id first
+		for i, id := range activity.ExclusiveStudentIDs {
+			if err := tx.Select("id").Where("id = ?", id).First(&activity.ExclusiveStudentObjects[i]).Error; err != nil {
+				return fmt.Errorf("failed to find student %d: %w", id, err)
 			}
 		}
 
@@ -183,7 +204,12 @@ func (r *ActivityRepository) UpdateActivity(activity *models.Activity) error {
 
 		// Update the link to exclusive classroom using Replace (delete all previous link, then create every new link)
 		if err := tx.Model(activity).Association("ExclusiveClassroomObjects").Replace(activity.ExclusiveClassroomObjects); err != nil {
-			return fmt.Errorf("failed to update activity: %w", err)
+			return fmt.Errorf("failed to update exclusive classroom: %w", err)
+		}
+
+		// Update the link to exclusive student using Replace (delete all previous link, then create every new link)
+		if err := tx.Model(activity).Association("ExclusiveStudentObjects").Replace(activity.ExclusiveStudentObjects); err != nil {
+			return fmt.Errorf("failed to update exclusive student: %w", err)
 		}
 
 		return nil

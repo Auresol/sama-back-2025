@@ -21,8 +21,8 @@ type School struct {
 
 	Classrooms []string `json:"classrooms" gorm:"-:all" validate:"required"`
 
-	SchoolYear int `json:"school_year" validate:"required,gt=0"` // School year must be positive
-	Semester   int `json:"semester" validate:"required,gt=0"`    // Semester must be positive
+	SchoolYear uint `json:"school_year" validate:"required,gt=0"` // School year must be positive
+	Semester   uint `json:"semester" validate:"required,gt=0"`    // Semester must be positive
 
 	ClassroomObjects []Classroom `json:"-"`
 

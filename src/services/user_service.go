@@ -75,9 +75,9 @@ func (s *UserService) UpdateUserProfile(user *models.User) error {
 	// Role and SchoolID might require specific permissions to change and should be handled carefully
 
 	// Validate the updated existingUser struct before saving
-	if err := s.validator.Struct(existingUser); err != nil {
-		return fmt.Errorf("validation failed for updated user: %w", err)
-	}
+	// if err := s.validator.Struct(existingUser); err != nil {
+	// 	return fmt.Errorf("validation failed for updated user: %w", err)
+	// }
 
 	return s.userRepo.UpdateUser(existingUser)
 }

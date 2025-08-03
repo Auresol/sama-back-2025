@@ -57,6 +57,20 @@ func (r *SchoolRepository) GetSchoolByID(id uint) (*models.School, error) {
 	return &school, nil
 }
 
+// GetSchoolSemesterAndSchoolYearByID retrieves a school by its primary ID.
+func (r *SchoolRepository) GetSchoolSemesterAndSchoolYearByID(id uint) (uint, uint, error) {
+	var school models.School
+	err := r.db.Select("semester", "school_year").First(&school, id).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, 0, fmt.Errorf("school with ID %d not found", id)
+		}
+		return 0, 0, fmt.Errorf("failed to retrieve semester and school_year by school ID: %w", err)
+	}
+	return school.Semester, school.SchoolYear, nil
+}
+
 // GetSchoolByEmail retrieves a school by its unique email.
 func (r *SchoolRepository) GetSchoolByEmail(email string) (*models.School, error) {
 	var school models.School

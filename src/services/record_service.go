@@ -93,14 +93,6 @@ func (s *RecordService) CreateRecord(record *models.Record, schoolID uint, creat
 		return fmt.Errorf("school id in activity and school id in your token mismatch")
 	}
 
-	school, err := s.schoolRepo.GetSchoolByID(schoolID)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve school with id %d: %w", schoolID, err)
-	}
-
-	record.Semester = school.Semester
-	record.SchoolYear = school.SchoolYear
-
 	// Validate input using struct tags
 	// if err := s.validator.Struct(record); err != nil {
 	// 	return fmt.Errorf("validation failed: %w", err)
@@ -129,10 +121,9 @@ func (s *RecordService) GetRecordByID(id uint) (*models.Record, error) {
 func (s *RecordService) GetAllRecords(
 	studentID, teacherID, activityID uint,
 	status string,
-	semester, schoolYear int,
 	limit, offset int,
 ) ([]models.Record, int, error) {
-	return s.recordRepo.GetAllRecords(studentID, teacherID, activityID, status, semester, schoolYear, limit, offset)
+	return s.recordRepo.GetAllRecords(studentID, teacherID, activityID, status, limit, offset)
 }
 
 // UpdateRecord updates an existing record.
@@ -180,12 +171,6 @@ func (s *RecordService) UpdateRecord(record *models.Record, updatedByUserID uint
 	// if record.TeacherID != 0 {
 	// 	existingRecord.TeacherID = record.TeacherID
 	// }
-	if record.SchoolYear != 0 {
-		existingRecord.SchoolYear = record.SchoolYear
-	}
-	if record.Semester != 0 {
-		existingRecord.Semester = record.Semester
-	}
 	if record.Amount != 0 { // Assuming 0 is not a valid amount or you handle it specifically
 		existingRecord.Amount = record.Amount
 	}

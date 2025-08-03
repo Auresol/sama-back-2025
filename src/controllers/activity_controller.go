@@ -39,7 +39,9 @@ type CreateActivityRequest struct {
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount      int                    `json:"finished_amount" binding:"required" example:"10"`
+	FinishedAmount      uint                   `json:"finished_amount" binding:"required" example:"10"`
+	Semester            uint                   `json:"semester,omitempty" example:"1"`
+	SchoolYear          uint                   `json:"school_year,omitempty" example:"2568"`
 	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }
 
@@ -54,7 +56,7 @@ type UpdateActivityRequest struct {
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount      int                    `json:"finished_amount" binding:"required" example:"10"`
+	FinishedAmount      uint                   `json:"finished_amount" binding:"required" example:"10"`
 	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }
 
@@ -102,6 +104,8 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 		FinishedAmount:      req.FinishedAmount,
 		ExclusiveClassrooms: req.ExclusiveClassrooms,
 		ExclusiveStudentIDs: req.ExclusiveStudentIDs,
+		Semester:            req.Semester,
+		SchoolYear:          req.SchoolYear,
 		UpdateProtocol:      req.UpdateProtocol,
 		OwnerID:             claims.UserID,
 		IsActive:            true,
@@ -211,8 +215,8 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 // @Produce json
 // @Param owner_id query int false "Filter by owner User ID"
 // @Param school_id query int false "Filter by School ID (Requires SAMA)"
-// @Param school_year query int false "Filter by School Year"
 // @Param semester query int false "Filter by Semester"
+// @Param school_year query int false "Filter by School Year"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
 // @Success 200 {array} models.Activity "List of activities retrieved successfully"
@@ -237,6 +241,8 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 		return
 	}
 
+	semester, _ := strconv.ParseUint(ctx.DefaultQuery("semester", "0"), 10, 64)
+	schoolYear, _ := strconv.ParseUint(ctx.DefaultQuery("school_year", "0"), 10, 64)
 	ownerID, _ := strconv.ParseUint(ctx.DefaultQuery("owner_id", "0"), 10, 64)
 	schoolID, _ := strconv.ParseUint(ctx.DefaultQuery("school_id", "0"), 10, 64)
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
@@ -255,7 +261,7 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 	}
 	// SAMA has no restrictions on ownerID or schoolID.
 
-	activities, err := c.activityService.GetAllActivities(uint(ownerID), uint(schoolID), limit, offset)
+	activities, err := c.activityService.GetAllActivities(uint(ownerID), uint(schoolID), uint(semester), uint(schoolYear), limit, offset)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve activities: " + err.Error()})
 		return
