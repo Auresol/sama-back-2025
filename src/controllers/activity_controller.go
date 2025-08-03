@@ -40,6 +40,7 @@ type CreateActivityRequest struct {
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
 	FinishedAmount      uint                   `json:"finished_amount" binding:"required" example:"10"`
+	CanExceedLimit      bool                   `json:"can_exceed_limit" biding:"required" example:"false"`
 	Semester            uint                   `json:"semester,omitempty" example:"1"`
 	SchoolYear          uint                   `json:"school_year,omitempty" example:"2568"`
 	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
@@ -57,6 +58,7 @@ type UpdateActivityRequest struct {
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
 	FinishedAmount      uint                   `json:"finished_amount" binding:"required" example:"10"`
+	CanExceedLimit      bool                   `json:"can_exceed_limit" biding:"required" example:"false"`
 	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }
 
@@ -106,6 +108,7 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 		ExclusiveStudentIDs: req.ExclusiveStudentIDs,
 		Semester:            req.Semester,
 		SchoolYear:          req.SchoolYear,
+		CanExceedLimit:      req.CanExceedLimit,
 		UpdateProtocol:      req.UpdateProtocol,
 		OwnerID:             claims.UserID,
 		IsActive:            true,
@@ -333,6 +336,7 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 		FinishedAmount:      req.FinishedAmount,
 		ExclusiveClassrooms: req.ExclusiveClassrooms,
 		ExclusiveStudentIDs: req.ExclusiveStudentIDs,
+		CanExceedLimit:      req.CanExceedLimit,
 		UpdateProtocol:      req.UpdateProtocol,
 		OwnerID:             existingActivity.OwnerID,
 		IsActive:            existingActivity.IsActive,

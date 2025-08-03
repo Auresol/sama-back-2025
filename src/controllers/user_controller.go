@@ -35,6 +35,21 @@ func NewUserController(
 	}
 }
 
+// UpdateUserProfileRequest represents the request body for updating a user's profile.
+// Use a separate struct for update requests to control what fields can be updated.
+type UpdateUserProfileRequest struct {
+	StudentID         string  `json:"user_id,omitempty" example:"10101"`
+	Email             string  `json:"email" binding:"omitempty,email" example:"new_email@example.com"`
+	Phone             string  `json:"phone" example:"+1987654321"`
+	Firstname         string  `json:"firstname" example:"Jane"`
+	Lastname          string  `json:"lastname" example:"Doe"`
+	ProfilePictureURL *string `json:"profile_picture_url,omitempty" example:"http://example.com/pic.jpg"`
+	Classroom         *string `json:"classroom,omitempty" example:"1/1" validate:"classroomregex"`
+	Number            *uint   `json:"number,omitempty" binding:"omitempty,number" example:"2"` // Pointer for optional int update
+	Language          string  `json:"language" example:"th"`
+	BookmarkUserIDs   []uint  `json:"bookmark_user_ids" example:"1"`
+}
+
 // GetMyProfile retrieves the profile of the authenticated user.
 // @Summary Get authenticated user's profile
 // @Description Retrieve the profile details of the currently authenticated user.
@@ -113,19 +128,6 @@ func (h *UserController) GetUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// UpdateUserProfileRequest represents the request body for updating a user's profile.
-// Use a separate struct for update requests to control what fields can be updated.
-type UpdateUserProfileRequest struct {
-	Email             string  `json:"email" binding:"omitempty,email" example:"new_email@example.com"`
-	Phone             string  `json:"phone" example:"+1987654321"`
-	Firstname         string  `json:"firstname" example:"Jane"`
-	Lastname          string  `json:"lastname" example:"Doe"`
-	ProfilePictureURL *string `json:"profile_picture_url,omitempty" example:"http://example.com/pic.jpg"`
-	Classroom         *string `json:"classroom,omitempty" example:"1/1" validate:"classroomregex"`
-	Number            *uint   `json:"number,omitempty" binding:"omitempty,number" example:"2"` // Pointer for optional int update
-	Language          string  `json:"language" example:"th"`
-}
-
 // UpdateUserProfile handles updating a user's profile.
 // @Summary Update user profile
 // @Description Update an authenticated user's profile.
@@ -191,6 +193,7 @@ func (h *UserController) UpdateUserProfile(c *gin.Context) {
 	userToUpdate.Classroom = req.Classroom
 	userToUpdate.Number = req.Number
 	userToUpdate.Language = req.Language
+	userToUpdate.BookmarkUserIDs = req.BookmarkUserIDs
 
 	if err := h.userService.UpdateUserProfile(userToUpdate); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update user profile: " + err.Error()})

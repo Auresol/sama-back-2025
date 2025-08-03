@@ -36,14 +36,14 @@ func (s *UserService) GetUserByEmail(email string) (*models.User, error) {
 
 // GetAllUsers retrieves all users with pagination.
 // This might be restricted to ADMIN/Sama Crew roles in the handler layer.
-func (s *UserService) GetAllUsers(limit, offset int) ([]models.User, error) {
-	return s.userRepo.GetAllUsers(limit, offset)
-}
+// func (s *UserService) GetAllUsers(limit, offset int) ([]models.User, error) {
+// 	return s.userRepo.GetAllUsers(limit, offset)
+// }
 
 // GetUsersBySchoolID retrieves users for a specific school.
 // This is for ADMINs to access users within their school.
-func (s *UserService) GetUsersBySchoolID(schoolID uint, role string, limit, offset int) ([]models.User, error) {
-	return s.userRepo.GetUsersBySchoolID(schoolID, role, limit, offset)
+func (s *UserService) GetUsersBySchoolID(schoolID, userID uint, role string, limit, offset int) ([]models.User, error) {
+	return s.userRepo.GetUsersBySchoolID(schoolID, userID, role, limit, offset)
 }
 
 // UpdateUserProfile updates a user's profile information.
@@ -72,6 +72,7 @@ func (s *UserService) UpdateUserProfile(user *models.User) error {
 	existingUser.Classroom = user.Classroom
 	existingUser.Number = user.Number
 	existingUser.Language = user.Language
+	existingUser.BookmarkUserIDs = user.BookmarkUserIDs
 	// Role and SchoolID might require specific permissions to change and should be handled carefully
 
 	// Validate the updated existingUser struct before saving

@@ -29,6 +29,7 @@ type Activity struct {
 
 	FinishedUnit   string `json:"finished_unit" validate:"required,oneof=TIMES HOURS"`
 	FinishedAmount uint   `json:"finished_amount" validate:"required"`
+	CanExceedLimit bool   `json:"can_exceed_limit"`
 	UpdateProtocol string `json:"update_protocol,omitempty" validate:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS"`
 
 	SchoolYear uint `json:"school_year" validate:"required,gt=0"`

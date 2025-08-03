@@ -478,7 +478,8 @@ func (h *SchoolController) RevertSemester(c *gin.Context) {
 // @Tags School
 // @Security BearerAuth
 // @Produce json
-// @Param school_id path int true "School ID"
+// @Param id path int true "School ID"
+// @Param role query string false "Filtered by role"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
 // @Success 200 {array} models.User "List of users retrieved successfully"
@@ -500,9 +501,9 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 		return
 	}
 
-	schoolID, err := strconv.ParseUint(c.Param("school_id"), 10, 64)
+	schoolID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid school ID"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid school ID: " + err.Error()})
 		return
 	}
 
@@ -512,10 +513,11 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 		return
 	}
 
+	status := c.DefaultQuery("role", "")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), "", limit, offset)
+	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, status, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return
@@ -534,7 +536,7 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 // @Tags School
 // @Security BearerAuth
 // @Produce json
-// @Param school_id path int true "School ID"
+// @Param id path int true "School ID"
 // @Param classroom query string false "Classroom string to query"
 // @Param activity_id query string false "Activity id list seperate by \"|\""
 // @Success 200 {array} models.User "List of users retrieved successfully"
@@ -556,7 +558,7 @@ func (h *SchoolController) GetStatistic(c *gin.Context) {
 		return
 	}
 
-	schoolID, err := strconv.ParseUint(c.Param("school_id"), 10, 64)
+	schoolID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid school ID"})
 		return
@@ -571,7 +573,7 @@ func (h *SchoolController) GetStatistic(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), "", limit, offset)
+	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, "", limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return

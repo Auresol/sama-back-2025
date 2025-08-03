@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"sama/sama-backend-2025/src/models" // Adjust import path
 )
@@ -124,6 +125,7 @@ func (r *SchoolRepository) UpdateSchool(school *models.School) error {
 			return fmt.Errorf("failed to retrieve school's classroom: %w", err)
 		}
 
+		// MUST NOT USE ASSOCIATE REPLACE SINCE CLASSROOM ID IS FORIEGN KEY TO OTHER TABLE
 		// Start of classroom update
 		var i, j int
 
@@ -172,7 +174,7 @@ func (r *SchoolRepository) UpdateSchool(school *models.School) error {
 
 		// -- end of classroom update --
 
-		if err := tx.Omit("ClassroomObjects").Updates(school).Error; err != nil {
+		if err := tx.Omit(clause.Associations).Updates(school).Error; err != nil {
 			return fmt.Errorf("failed to update school: %w", err)
 		}
 
