@@ -144,7 +144,7 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "Activity ID"
-// @Success 200 {object} models.Activity "Activity retrieved successfully"
+// @Success 200 {object} models.ActivityWithStatistic "Activity retrieved successfully"
 // @Failure 400 {object} ErrorResponse "Invalid activity ID"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (not authorized to view this activity)"

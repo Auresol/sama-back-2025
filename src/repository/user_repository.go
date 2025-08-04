@@ -57,7 +57,7 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 // GetUserByID retrieves a user by ID.
 func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 	var user models.User
-	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").First(&user, id).Error
+	err := r.db.Joins("School").Joins("ClassroomObject", DB.Select("classroom")).First(&user, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with ID %d not found", id)
@@ -71,7 +71,7 @@ func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 // Useful for login authentication.
 func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").First(&user, "email = ?", email).Error
+	err := r.db.First(&user, "email = ?", email).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with email %s not found", email)
@@ -86,7 +86,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, role string, limit, offset int) ([]models.User, error) {
 	var users []models.User
 	// Start building the query
-	query := r.db.Model(&models.User{}).Joins("ClassroomObject")
+	query := r.db.Joins("ClassroomObject", DB.Select("classroom"))
 
 	// Apply school_id filter
 	query = query.Where("users.school_id = ?", schoolID)
