@@ -15,6 +15,7 @@ import (
 // ActivityService handles business logic for activities.
 type ActivityService struct {
 	activityRepo *repository.ActivityRepository
+	schoolRepo   *repository.SchoolRepository
 	userRepo     *repository.UserRepository // Need user repo to validate CustomStudentIDs
 	validator    *validator.Validate
 }
@@ -23,6 +24,7 @@ type ActivityService struct {
 func NewActivityService(validate *validator.Validate) *ActivityService {
 	return &ActivityService{
 		activityRepo: repository.NewActivityRepository(),
+		schoolRepo:   repository.NewSchoolRepository(),
 		userRepo:     repository.NewUserRepository(), // Re-using UserRepository for user validation
 		validator:    validate,
 	}
@@ -50,7 +52,7 @@ func (s *ActivityService) validateActivityData(activity *models.Activity) error 
 		return fmt.Errorf("failed to validate owner_id: %w", err)
 	}
 	// Optionally, check if owner has appropriate role (e.g., TCH, ADMIN)
-	if owner.Role != "TCH" && owner.Role != "ADMIN" && owner.Role != "SAMA_CREW" {
+	if owner.Role != "TCH" && owner.Role != "ADMIN" && owner.Role != "SAMA" {
 		return errors.New("owner must be a teacher, admin, or Sama Crew member")
 	}
 
@@ -69,10 +71,18 @@ func (s *ActivityService) CreateActivity(activity *models.Activity) error {
 	// 	return fmt.Errorf("activity data validation failed: %w", err)
 	// }
 
-	// Set default IsActive to true if not set
-	if activity.ID == 0 { // For new creation
-		activity.IsActive = true
+	// if either semester of school year is invalid, get current semester and year
+	if activity.Semester == 0 || activity.SchoolYear == 0 {
+		semester, schoolYear, err := s.schoolRepo.GetSchoolSemesterAndSchoolYearByID(activity.SchoolID)
+		if err != nil {
+			return err
+		}
+
+		activity.Semester = semester
+		activity.SchoolYear = schoolYear
 	}
+
+	activity.IsActive = true
 
 	return s.activityRepo.CreateActivity(activity)
 }
@@ -83,8 +93,17 @@ func (s *ActivityService) GetActivityByID(id uint) (*models.Activity, error) {
 }
 
 // GetAllActivities retrieves activities with filtering and pagination.
-func (s *ActivityService) GetAllActivities(ownerID, schoolID uint, limit, offset int) ([]models.Activity, error) {
-	return s.activityRepo.GetAllActivities(ownerID, schoolID, limit, offset)
+func (s *ActivityService) GetAllActivities(ownerID, schoolID, semester, schoolYear uint, limit, offset int) ([]models.Activity, error) {
+	// if either semester of school year is invalid, get current semester and year
+	if semester == 0 || schoolYear == 0 {
+		var err error
+		semester, schoolYear, err = s.schoolRepo.GetSchoolSemesterAndSchoolYearByID(schoolID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return s.activityRepo.GetAllActivities(ownerID, schoolID, semester, schoolYear, limit, offset)
 }
 
 // UpdateActivity updates an existing activity.
@@ -108,10 +127,18 @@ func (s *ActivityService) UpdateActivity(activity *models.Activity) error {
 	return s.activityRepo.UpdateActivity(activity)
 }
 
-func (r *ActivityService) GetAssignedActivitiesByUserID(userID, schoolID uint, limit, offset int) ([]models.ActivityWithStatistic, error) {
+func (r *ActivityService) GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear uint) ([]models.ActivityWithStatistic, error) {
 
-	fmt.Printf("Debug: s.activityRepo is: %v\n", r.activityRepo)
-	activities, err := r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, limit, offset)
+	// if either semester of school year is invalid, get current semester and year
+	if semester == 0 || schoolYear == 0 {
+		var err error
+		semester, schoolYear, err = r.schoolRepo.GetSchoolSemesterAndSchoolYearByID(schoolID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	activities, err := r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve activities: %w", err)
 	}

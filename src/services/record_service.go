@@ -93,14 +93,6 @@ func (s *RecordService) CreateRecord(record *models.Record, schoolID uint, creat
 		return fmt.Errorf("school id in activity and school id in your token mismatch")
 	}
 
-	school, err := s.schoolRepo.GetSchoolByID(schoolID)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve school with id %d: %w", schoolID, err)
-	}
-
-	record.Semester = school.Semester
-	record.SchoolYear = school.SchoolYear
-
 	// Validate input using struct tags
 	// if err := s.validator.Struct(record); err != nil {
 	// 	return fmt.Errorf("validation failed: %w", err)
@@ -130,7 +122,7 @@ func (s *RecordService) GetAllRecords(
 	studentID, teacherID, activityID uint,
 	status string,
 	limit, offset int,
-) ([]models.Record, error) {
+) ([]models.Record, int, error) {
 	return s.recordRepo.GetAllRecords(studentID, teacherID, activityID, status, limit, offset)
 }
 

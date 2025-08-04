@@ -8,7 +8,6 @@ import (
 	"sama/sama-backend-2025/src/middlewares"
 	"sama/sama-backend-2025/src/services"
 
-	// For JWT claims
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -36,6 +35,21 @@ func NewUserController(
 	}
 }
 
+// UpdateUserProfileRequest represents the request body for updating a user's profile.
+// Use a separate struct for update requests to control what fields can be updated.
+type UpdateUserProfileRequest struct {
+	StudentID         string  `json:"user_id,omitempty" example:"10101"`
+	Email             string  `json:"email" binding:"omitempty,email" example:"new_email@example.com"`
+	Phone             string  `json:"phone" example:"+1987654321"`
+	Firstname         string  `json:"firstname" example:"Jane"`
+	Lastname          string  `json:"lastname" example:"Doe"`
+	ProfilePictureURL *string `json:"profile_picture_url,omitempty" example:"http://example.com/pic.jpg"`
+	Classroom         *string `json:"classroom,omitempty" example:"1/1" validate:"classroomregex"`
+	Number            *uint   `json:"number,omitempty" binding:"omitempty,number" example:"2"` // Pointer for optional int update
+	Language          string  `json:"language" example:"th"`
+	BookmarkUserIDs   []uint  `json:"bookmark_user_ids" example:"1"`
+}
+
 // GetMyProfile retrieves the profile of the authenticated user.
 // @Summary Get authenticated user's profile
 // @Description Retrieve the profile details of the currently authenticated user.
@@ -45,7 +59,7 @@ func NewUserController(
 // @Success 200 {object} models.User "User profile retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized (missing or invalid token)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /me [get]
+// @Router /user/me [get]
 func (h *UserController) GetMyProfile(c *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
@@ -114,19 +128,6 @@ func (h *UserController) GetUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// UpdateUserProfileRequest represents the request body for updating a user's profile.
-// Use a separate struct for update requests to control what fields can be updated.
-type UpdateUserProfileRequest struct {
-	Email             string  `json:"email" binding:"omitempty,email" example:"new_email@example.com"`
-	Phone             string  `json:"phone" example:"+1987654321"`
-	Firstname         string  `json:"firstname" example:"Jane"`
-	Lastname          string  `json:"lastname" example:"Doe"`
-	ProfilePictureURL *string `json:"profile_picture_url,omitempty" example:"http://example.com/pic.jpg"`
-	Classroom         *string `json:"classroom,omitempty" example:"1/1" validate:"classroomregex"`
-	Number            *uint   `json:"number,omitempty" binding:"omitempty,number" example:"2"` // Pointer for optional int update
-	Language          string  `json:"language" example:"th"`
-}
-
 // UpdateUserProfile handles updating a user's profile.
 // @Summary Update user profile
 // @Description Update an authenticated user's profile.
@@ -192,6 +193,7 @@ func (h *UserController) UpdateUserProfile(c *gin.Context) {
 	userToUpdate.Classroom = req.Classroom
 	userToUpdate.Number = req.Number
 	userToUpdate.Language = req.Language
+	userToUpdate.BookmarkUserIDs = req.BookmarkUserIDs
 
 	if err := h.userService.UpdateUserProfile(userToUpdate); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update user profile: " + err.Error()})
@@ -264,15 +266,18 @@ func (h *UserController) DeleteUser(c *gin.Context) {
 
 // GetAssignedActivity retrieves a list of activities related to the authenticated user.
 // This includes activities where the user is the owner, or part of exclusive classrooms/students.
-// @Summary Get activities related to the authenticated user
+// @Summary Get activities related to the user
 // @Description Retrieve a list of activities that are assigned to or owned by the authenticated user.
 // @Tags User
 // @Security BearerAuth
+// @Param id path int true "User ID to get"
+// @Param semester query int false "School semester"
+// @Param school_year query int false "School year"
 // @Produce json
 // @Success 200 {array} models.ActivityWithStatistic "List of related activities retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/activity [get]
+// @Router /user/{id}/activity [get]
 func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
@@ -280,8 +285,14 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 		return
 	}
 
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid user ID"})
+		return
+	}
+
+	semester, _ := strconv.ParseUint(ctx.DefaultQuery("semester", "0"), 10, 64)
+	schoolYear, _ := strconv.ParseUint(ctx.DefaultQuery("school_year", "0"), 10, 64)
 
 	// TODO: Implement the service call to fetch activities related to claims.UserID
 	// This service method would need to query activities where:
@@ -292,7 +303,7 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 	// This will be a more complex query in the repository.
 
 	// Example placeholder for activities:
-	activities, err := c.activityService.GetAssignedActivitiesByUserID(claims.UserID, claims.SchoolID, limit, offset)
+	activities, err := c.activityService.GetAssignedActivitiesByUserID(uint(id), claims.SchoolID, uint(semester), uint(schoolYear))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
 		return
@@ -300,43 +311,6 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 
 	// For now, returning a placeholder response
 	ctx.JSON(http.StatusOK, activities) // Return an empty array or mock data
-}
-
-// GetRelatedRecords retrieves a list of record related to the authenticated user.
-// This include records that user created (for student) or checking (for teacher)
-// @Summary Get records related to the authenticated user
-// @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
-// @Tags User
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {array} models.Record "List of related activities retrieved successfully"
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/record [get]
-func (c *UserController) GetRelatedRecords(ctx *gin.Context) {
-	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
-	if !ok {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-		return
-	}
-
-	// Example placeholder for activities:
-	// activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
-	// if err != nil {
-	//     ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
-	//     return
-	// }
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
-
-	records, err := c.recordService.GetAllRecords(claims.UserID, 0, 0, "", limit, offset)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve my records: " + err.Error()})
-		return
-	}
-
-	// For now, returning a placeholder response
-	ctx.JSON(http.StatusOK, records) // Return an empty array or mock data
 }
 
 // // GetStatisticByID retrieves a list of record related to the authenticated user.

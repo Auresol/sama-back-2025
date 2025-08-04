@@ -20,16 +20,16 @@ type User struct {
 	ProfilePictureURL *string `json:"profile_picture_url,omitempty"`
 	Language          string  `json:"language" validate:"required"`
 
-	SchoolID          uint    `json:"school_id" validate:"required"`
-	Classroom         *string `json:"classroom,omitempty"`
-	Number            *uint   `json:"number,omitempty" validate:"gt=0"`
-	BookmarkedUserIDs []uint  `json:"bookmarked_user_ids,omitempty" gorm:"-:all"`
+	SchoolID        uint    `json:"school_id" validate:"required"`
+	Classroom       *string `json:"classroom,omitempty"`
+	Number          *uint   `json:"number,omitempty" validate:"gt=0"`
+	BookmarkUserIDs []uint  `json:"bookmark_user_ids" gorm:"-:all"`
 
-	ClassroomID    *uint       `json:"-"`
-	ClassroomModel *Classroom  `json:"-" gorm:"foreignKey:ClassroomID"`
-	School         School      `json:"school" gorm:"foreignKey:SchoolID"`
-	Activities     []*Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
-	BookmarkedUser []*User     `json:"-" gorm:"many2many:user_bookmark"`
+	ClassroomID    *uint      `json:"-"`
+	ClassroomModel *Classroom `json:"-" gorm:"foreignKey:ClassroomID"`
+	School         School     `json:"school" gorm:"foreignKey:SchoolID"`
+	Activities     []Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
+	BookmarkUsers  []User     `json:"-" gorm:"many2many:user_bookmarks"`
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
@@ -47,7 +47,12 @@ func (u *User) AfterFind(tx *gorm.DB) (err error) {
 	if u.ClassroomModel != nil {
 		u.Classroom = &u.ClassroomModel.Classroom
 	}
+
+	u.BookmarkUserIDs = make([]uint, len(u.BookmarkUsers))
+	for i, user := range u.BookmarkUsers {
+		u.BookmarkUserIDs[i] = user.ID
+	}
 	return nil
 }
 
-var ROLE = []string{"STD", "TCH", "ADMIN", "SAMA_CREW"}
+var ROLE = []string{"STD", "TCH", "ADMIN", "SAMA"}

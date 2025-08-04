@@ -1,16 +1,11 @@
 package services
 
 import (
-	"errors"
 	"fmt"
-	"regexp"
 	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/repository"
-	"sama/sama-backend-2025/src/utils"
 
 	"github.com/go-playground/validator/v10"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 // userService handles business logic for user accounts.
@@ -22,77 +17,11 @@ type UserService struct {
 }
 
 // NewuserService creates a new instance of userService.
-func NewUserService(jwtSecret string, jwtExpMins int, validate *validator.Validate) *UserService {
+func NewUserService(validate *validator.Validate) *UserService {
 	return &UserService{
-		userRepo:   repository.NewUserRepository(),
-		validator:  validate,
-		jwtSecret:  jwtSecret,
-		jwtExpMins: jwtExpMins,
+		userRepo:  repository.NewUserRepository(),
+		validator: validate,
 	}
-}
-
-// RegisterUser creates a new user with hashed password.
-// This method is for new user registration.
-func (s *UserService) RegisterUser(user *models.User) error {
-	// Validate input user data using the service's validator instance
-	if err := s.validator.StructExcept(user, "School"); err != nil {
-		return fmt.Errorf("validation failed: %w", err)
-	}
-
-	// Check if user with this email already exists
-	_, err := s.userRepo.GetUserByEmail(user.Email)
-	if err == nil { // User found, so email already exists
-		return errors.New("user with this email already exists")
-	}
-	// if !errors.Is(err, gorm.ErrRecordNotFound) { // Other database error
-	// 	return fmt.Errorf("failed to check existing user: %w", err)
-	// }
-
-	// Hash the password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
-	}
-	user.Password = string(hashedPassword) // Store hashed password
-
-	// Set default values if not provided (e.g., IsActive)
-	// Note: ProfilePictureURL is a pointer, so check for nil
-	if user.ProfilePictureURL == nil {
-		defaultPictureURL := "" // Or a default placeholder URL
-		user.ProfilePictureURL = &defaultPictureURL
-	}
-	// Create the user
-	return s.userRepo.CreateUser(user)
-}
-
-// Login authenticates a user and returns a JWT token if successful.
-// It receives email and plain-text password directly.
-func (s *UserService) Login(email, password string) (string, error) {
-	// Basic validation for email and password format (if not done in handler)
-	// For example, if you had a LoginRequest struct passed here:
-	// if err := s.validator.Struct(loginReq); err != nil { return "", fmt.Errorf("validation failed: %w", err) }
-
-	user, err := s.userRepo.GetUserByEmail(email)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", errors.New("invalid credentials")
-		}
-		return "", fmt.Errorf("failed to retrieve user for login: %w", err)
-	}
-
-	// Compare password (hashed password from DB vs. plain text password from input)
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-	if err != nil {
-		return "", errors.New("invalid credentials") // Passwords do not match
-	}
-
-	// Generate JWT token
-	token, err := utils.GenerateToken(user.ID, user.SchoolID, user.Email, user.Role, s.jwtSecret, s.jwtExpMins)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate token: %w", err)
-	}
-
-	return token, nil
 }
 
 // GetUserByID retrieves a user by ID.
@@ -107,14 +36,14 @@ func (s *UserService) GetUserByEmail(email string) (*models.User, error) {
 
 // GetAllUsers retrieves all users with pagination.
 // This might be restricted to ADMIN/Sama Crew roles in the handler layer.
-func (s *UserService) GetAllUsers(limit, offset int) ([]models.User, error) {
-	return s.userRepo.GetAllUsers(limit, offset)
-}
+// func (s *UserService) GetAllUsers(limit, offset int) ([]models.User, error) {
+// 	return s.userRepo.GetAllUsers(limit, offset)
+// }
 
 // GetUsersBySchoolID retrieves users for a specific school.
 // This is for ADMINs to access users within their school.
-func (s *UserService) GetUsersBySchoolID(schoolID uint, role string, limit, offset int) ([]models.User, error) {
-	return s.userRepo.GetUsersBySchoolID(schoolID, role, limit, offset)
+func (s *UserService) GetUsersBySchoolID(schoolID, userID uint, role string, limit, offset int) ([]models.User, error) {
+	return s.userRepo.GetUsersBySchoolID(schoolID, userID, role, limit, offset)
 }
 
 // UpdateUserProfile updates a user's profile information.
@@ -143,33 +72,15 @@ func (s *UserService) UpdateUserProfile(user *models.User) error {
 	existingUser.Classroom = user.Classroom
 	existingUser.Number = user.Number
 	existingUser.Language = user.Language
+	existingUser.BookmarkUserIDs = user.BookmarkUserIDs
 	// Role and SchoolID might require specific permissions to change and should be handled carefully
 
 	// Validate the updated existingUser struct before saving
-	if err := s.validator.Struct(existingUser); err != nil {
-		return fmt.Errorf("validation failed for updated user: %w", err)
-	}
+	// if err := s.validator.Struct(existingUser); err != nil {
+	// 	return fmt.Errorf("validation failed for updated user: %w", err)
+	// }
 
 	return s.userRepo.UpdateUser(existingUser)
-}
-
-// UpdatePassword updates a user's password.
-// This method should be used specifically for password changes.
-func (s *UserService) UpdatePassword(userID uint, newPassword string) error {
-	// Password must contain only alphabet, number, or "_" only
-	// Regex: ^[a-zA-Z0-9_]+$
-	if !regexp.MustCompile(`^[a-zA-Z0-9_]+$`).MatchString(newPassword) {
-		return errors.New("password must contain only alphabets, numbers, or underscores")
-	}
-	if len(newPassword) < 8 { // Example simple validation: min length
-		return errors.New("password must be at least 8 characters long")
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return fmt.Errorf("failed to hash new password: %w", err)
-	}
-	return s.userRepo.UpdateUserPassword(userID, string(hashedPassword))
 }
 
 // UpdateProfilePicture updates a user's profile picture URL.

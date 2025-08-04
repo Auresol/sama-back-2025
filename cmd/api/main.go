@@ -59,7 +59,7 @@ func main() {
 	}
 
 	// Setup routes
-	router := routes.SetupRoutes()
+	router := routes.SetupRoutes(cfg)
 
 	// Add CORS middlewares
 	router.Use(func(c *gin.Context) {

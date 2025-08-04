@@ -1,8 +1,7 @@
 package routes
 
 import (
-	"log"
-	"os"
+	"sama/sama-backend-2025/src/config"
 	"sama/sama-backend-2025/src/controllers"
 	"sama/sama-backend-2025/src/middlewares"
 	"sama/sama-backend-2025/src/services"
@@ -16,25 +15,26 @@ import (
 )
 
 // SetupRoutes configures all the routes for the application
-func SetupRoutes() *gin.Engine {
+func SetupRoutes(cfg *config.Config) *gin.Engine {
 	router := gin.Default()
-
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		log.Fatal("JWT_SECRET environment variable not set. Please provide a secret key.")
-	}
-	jwtExpirationMinutes := 60 // Example: Token expires in 60 minutes
 
 	validate := utils.Validate
 
 	// Initialize services
-	userService := services.NewUserService(jwtSecret, jwtExpirationMinutes, validate)
+	authService := services.NewAuthService(
+		cfg.JWT.Secret,
+		cfg.JWT.Expiry,
+		cfg.RefreshJWT.Secret,
+		cfg.RefreshJWT.Expiry,
+		validate,
+	)
+	userService := services.NewUserService(validate)
 	schoolService := services.NewSchoolService(validate)
 	activityService := services.NewActivityService(validate)
 	recordService := services.NewRecordService(validate)
 
 	// Initialize handlers
-	authController := controllers.NewAuthController(userService, validate)
+	authController := controllers.NewAuthController(authService, validate)
 	userController := controllers.NewUserController(userService, activityService, recordService, validate)
 	schoolController := controllers.NewSchoolController(schoolService, userService, validate)
 	activityController := controllers.NewActivityController(activityService, validate)
@@ -54,23 +54,23 @@ func SetupRoutes() *gin.Engine {
 	{
 		publicRoutes.POST("/register", authController.RegisterUser)
 		publicRoutes.POST("/login", authController.Login)
+		publicRoutes.POST("/refresh-token", authController.RefreshToken)
 		publicRoutes.POST("/forgot-password/request", authController.RequestOtp)
 		publicRoutes.POST("/forgot-password/validate", authController.ValidateOtp)
 		publicRoutes.POST("/school", schoolController.CreateSchool)
+		publicRoutes.GET("/school", schoolController.GetAllSchools)
 	}
 
 	// Authenticated routes (protected by JWT middlewares)
 	authRoutes := router.Group("/api/v1")
-	authRoutes.Use(middlewares.Authmiddlewares(jwtSecret))
+	authRoutes.Use(middlewares.Authmiddlewares(cfg.JWT.Secret))
 	{
-		authRoutes.GET("/me", userController.GetMyProfile)
+		authRoutes.GET("/user/me", userController.GetMyProfile)
 		authRoutes.GET("/user/:id", userController.GetUserByID)
 		authRoutes.PUT("/user/:id", userController.UpdateUserProfile)
 		authRoutes.DELETE("/user/:id", userController.DeleteUser)
-		authRoutes.GET("/user/activity", userController.GetAssignedActivities)
-		authRoutes.GET("/user/record", userController.GetRelatedRecords) // require pagination
+		authRoutes.GET("/user/:id/activity", userController.GetAssignedActivities)
 
-		authRoutes.GET("/school", schoolController.GetAllSchools)
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
 		authRoutes.PUT("/school/:id", schoolController.UpdateSchool)
 		authRoutes.DELETE("/school/:id", schoolController.DeleteSchool)

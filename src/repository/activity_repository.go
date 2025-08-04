@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"sama/sama-backend-2025/src/models"
 )
@@ -29,7 +30,7 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 
 		// TODO: use virtual table + join everything
 
-		activity.ExclusiveClassroomObjects = make([]*models.Classroom, len(activity.ExclusiveClassrooms))
+		activity.ExclusiveClassroomObjects = make([]models.Classroom, len(activity.ExclusiveClassrooms))
 		// Get classroom's id first
 		for i, name := range activity.ExclusiveClassrooms {
 			if err := tx.Select("id").Where("school_id = ? AND classroom = ?", activity.SchoolID, name).First(&activity.ExclusiveClassroomObjects[i]).Error; err != nil {
@@ -37,8 +38,16 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 			}
 		}
 
+		activity.ExclusiveStudentObjects = make([]models.User, len(activity.ExclusiveStudentIDs))
+		// Get student's id first
+		for i, id := range activity.ExclusiveStudentIDs {
+			if err := tx.Select("id").First(&activity.ExclusiveStudentObjects[i], "id = ?", id).Error; err != nil {
+				return fmt.Errorf("failed to find student %d: %w", id, err)
+			}
+		}
+
 		// Create activity with exclusiveClassroom association, omit the upesrt of classroom
-		err := tx.Model(activity).Omit("ExclusiveClassroomObjects.*").Create(activity).Error
+		err := tx.Model(activity).Omit("ExclusiveClassroomObjects.*").Omit("ExclusiveStudentObjects.*").Create(activity).Error
 		if err != nil {
 			return fmt.Errorf("failed to create activity: %w", err)
 		}
@@ -50,7 +59,15 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 // GetActivityByID retrieves an activity by its ID, preloading custom student IDs.
 func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) {
 	var activity models.Activity
-	err := r.db.Preload("ExclusiveStudentObjects").Preload("ExclusiveClassroomObjects").First(&activity, id).Error
+
+	// Start building the query
+	err := r.db.Model(&models.Activity{}).
+		Select("activities.*, COALESCE(activities.deadline, schools.default_activity_deadline) AS deadline").
+		Joins("LEFT JOIN schools ON activities.school_id = schools.id").
+		Preload("ExclusiveStudentObjects").
+		Preload("ExclusiveClassroomObjects").
+		First(&activity, id).Error
+
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("activity with ID %d not found", id)
@@ -62,27 +79,45 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) 
 
 // GetAllActivities retrieves all activities with pagination, optionally filtering by owner ID or school ID/year/semester.
 // This method can be expanded for more complex filtering.
-func (r *ActivityRepository) GetAllActivities(ownerID, schoolID uint, limit, offset int) ([]models.Activity, error) {
+func (r *ActivityRepository) GetAllActivities(ownerID, schoolID, semester, schoolYear uint, limit, offset int) ([]models.Activity, error) {
 	var activities []models.Activity
-	query := r.db.Model(&models.Activity{}) // Always preload students
+	// Start building the query
+	query := r.db.Model(&models.Activity{})
 
+	// Select all activity columns (ac.*) and the coalesced deadline.
+	// We explicitly select 'activities.*' to ensure all original fields are picked up,
+	// and then override/add 'deadline' with the COALESCE expression.
+	query = query.Select("activities.*, COALESCE(activities.deadline, schools.default_activity_deadline) AS deadline")
+
+	// Join with the schools table to access default_activity_deadline
+	// Use the alias 'schools' as GORM typically defaults to table names for simple joins
+	query = query.Joins("LEFT JOIN schools ON activities.school_id = schools.id")
+
+	// Apply primary filters
+	query = query.Where("activities.semester = ? AND activities.school_year = ?", semester, schoolYear)
+
+	// Apply Preloads (these will still work correctly because we're using GORM's builder)
+	query = query. // Preload School model (might not be necessary if you only need default_activity_deadline)
+			Preload("ExclusiveStudentObjects").
+			Preload("ExclusiveClassroomObjects").
+			Model(&models.Activity{})
+
+	// Apply ownerID filter
 	if ownerID != 0 {
-		query = query.Where("owner_id = ?", ownerID)
+		query = query.Where("activities.owner_id = ?", ownerID) // Use activities.owner_id for clarity
 	}
+
+	// Apply schoolID filter (if different from the one in the main WHERE clause)
 	if schoolID != 0 {
-		// Assuming User model has SchoolID and Activity is implicitly linked to School via Owner's SchoolID
-		// Or if Activity model itself has a SchoolID directly (which it doesn't in your definition)
-		// For now, if schoolID is provided, we might need a join or subquery based on owner's school.
-		// For simplicity, let's assume filtering by SchoolYear and Semester directly linked to Activity
-		// is sufficient for school-level filtering if no direct SchoolID on Activity model.
+		query = query.Where("activities.school_id = ?", schoolID) // Use activities.school_id for clarity
 	}
 
 	err := query.Limit(limit).Offset(offset).Find(&activities).Error
 	return activities, err
 }
 
-func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint, limit, offset int) ([]models.ActivityWithStatistic, error) {
-	var activities []models.ActivityWithStatistic
+func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear uint) ([]models.ActivityWithStatistic, error) {
+	activities := make([]models.ActivityWithStatistic, 0)
 
 	// Query all activities assigned to user based on 3 condition
 	// 1. activities is for junior or senior
@@ -91,13 +126,17 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint
 	query := `
 		SELECT 
 			ac.*,
+			COALESCE(ac.deadline, s.default_activity_deadline) AS deadline,
 			SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
 			SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
 			SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
 			SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records	
 		FROM activities ac
 		LEFT JOIN records r ON r.activity_id = ac.id
+		LEFT JOIN schools s ON ac.school_id = s.id
 		WHERE ac.school_id = ? and
+			  ac.semester = ? and
+			  ac.school_year = ? and
 		(
 		-- Condition 1: Check general coverage for the user's "junior" status
 			-- We'll get the user's is_junior status from their classroom
@@ -129,12 +168,12 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID uint
 				AND aes.user_id = ? -- Target user ID
 			)
 		)
-		GROUP BY ac.id
+		GROUP BY ac.id, s.default_activity_deadline
 		ORDER BY ac.is_required DESC, ac.id ASC
 	`
 
-	if err := r.db.Raw(query, schoolID, userID, userID, userID).Scan(&activities).Error; err != nil {
-		return nil, fmt.Errorf("failed to get activities: %w", err)
+	if err := r.db.Raw(query, schoolID, semester, schoolYear, userID, userID, userID).Scan(&activities).Error; err != nil {
+		return activities, fmt.Errorf("failed to get activities: %w", err)
 	}
 
 	return activities, nil
@@ -162,11 +201,11 @@ func (r *ActivityRepository) UpdateActivity(activity *models.Activity) error {
 			// reset all record status to CREATED
 			err := tx.Model(&models.Record{}).Where("activity_id = ? AND semester = ? AND school_year = ?", activity.ID, school.Semester, school.SchoolYear).UpdateColumn("status", "CREATED").Error
 			if err != nil {
-				return fmt.Errorf("failed to update records (update protocol = re-evaulate all): %w", err)
+				return fmt.Errorf("failed to update records (update protocol is re-evaulate all): %w", err)
 			}
 		}
 
-		activity.ExclusiveClassroomObjects = make([]*models.Classroom, len(activity.ExclusiveClassrooms))
+		activity.ExclusiveClassroomObjects = make([]models.Classroom, len(activity.ExclusiveClassrooms))
 		// Get classroom's id first
 		for i, name := range activity.ExclusiveClassrooms {
 			if err := tx.Select("id").Where("school_id = ? AND classroom = ?", activity.SchoolID, name).First(&activity.ExclusiveClassroomObjects[i]).Error; err != nil {
@@ -174,14 +213,27 @@ func (r *ActivityRepository) UpdateActivity(activity *models.Activity) error {
 			}
 		}
 
+		activity.ExclusiveStudentObjects = make([]models.User, len(activity.ExclusiveStudentIDs))
+		// Get student's id first
+		for i, id := range activity.ExclusiveStudentIDs {
+			if err := tx.Select("id").First(&activity.ExclusiveStudentObjects[i], "id = ?", id).Error; err != nil {
+				return fmt.Errorf("failed to find student %d: %w", id, err)
+			}
+		}
+
 		// Update the activity fields
-		if err := tx.Omit("ExclusiveClassroomObjects").Save(activity).Error; err != nil {
+		if err := tx.Omit(clause.Associations).Save(activity).Error; err != nil {
 			return fmt.Errorf("failed to update activity: %w", err)
 		}
 
 		// Update the link to exclusive classroom using Replace (delete all previous link, then create every new link)
 		if err := tx.Model(activity).Association("ExclusiveClassroomObjects").Replace(activity.ExclusiveClassroomObjects); err != nil {
-			return fmt.Errorf("failed to update activity: %w", err)
+			return fmt.Errorf("failed to update exclusive classroom: %w", err)
+		}
+
+		// Update the link to exclusive student using Replace (delete all previous link, then create every new link)
+		if err := tx.Model(activity).Association("ExclusiveStudentObjects").Replace(activity.ExclusiveStudentObjects); err != nil {
+			return fmt.Errorf("failed to update exclusive student: %w", err)
 		}
 
 		return nil

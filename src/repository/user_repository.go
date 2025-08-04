@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"sama/sama-backend-2025/src/models" // Assuming this is your module path to models
 )
@@ -29,15 +30,23 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 		// 1. Get classroom (if exised)
 		if user.Classroom != nil {
 			classroom := models.Classroom{}
-			if err := tx.Where("school_id = ? AND classroom = ?", user.SchoolID, user.Classroom).Find(&classroom).Error; err != nil {
+			if err := tx.Where("school_id = ? AND classroom = ?", user.SchoolID, user.Classroom).First(&classroom).Error; err != nil {
 				return fmt.Errorf("failed to retrieve user's classroom: %w", err)
 			}
 
 			user.ClassroomID = &classroom.ID
 		}
 
+		user.BookmarkUsers = make([]models.User, len(user.BookmarkUserIDs))
+		// Get student's id first
+		for i, id := range user.BookmarkUserIDs {
+			if err := tx.Select("id").First(&user.BookmarkUsers[i], "id = ?", id).Error; err != nil {
+				return fmt.Errorf("failed to find user with id %d: %w", id, err)
+			}
+		}
+
 		// 2. Create user
-		if err := tx.Create(user).Error; err != nil {
+		if err := tx.Omit("BookmarkUsers.*").Create(user).Error; err != nil {
 			return fmt.Errorf("failed to create user: %w", err)
 		}
 
@@ -74,21 +83,41 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 
 // GetUsersBySchoolID retrieves all users belonging to a specific school with pagination.
 // This supports the "only able to access data from their school" feature.
-func (r *UserRepository) GetUsersBySchoolID(schoolID uint, role string, limit, offset int) ([]models.User, error) {
+func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, role string, limit, offset int) ([]models.User, error) {
 	var users []models.User
-	query := r.db.Preload("ClassroomModel").Where("school_id = ?", schoolID)
+	// Start building the query
+	query := r.db.Model(&models.User{}).Preload("ClassroomModel")
+
+	// Apply school_id filter
+	query = query.Where("users.school_id = ?", schoolID)
+
+	// Apply role filter if provided
 	if role != "" {
-		query.Where("role = ?", role)
+		query = query.Where("users.role = ?", role)
+	}
+
+	// Apply role filter if provided
+	if role != "" {
+		query = query.Where("users.role = ?", role)
+	}
+
+	if userID != 0 {
+		// Join with the user_bookmarks table (aliased as 'ub')
+		// The ON clause checks if the current 'users' row's ID is present as a 'bookmark_user_id'
+		// in the 'user_bookmarks' table for the 'requestingUserID'.
+		query = query.Joins("LEFT JOIN user_bookmarks ub ON ub.bookmark_user_id = users.id AND ub.user_id = ?", userID)
+
+		// Add the custom ORDER BY clause
+		// CASE WHEN ub.user_id IS NOT NULL THEN 0 ELSE 1 END:
+		// If ub.user_id is NOT NULL, it means there's a matching bookmark for the requestingUser, so assign 0 (comes first).
+		// Otherwise (NULL), no bookmark, so assign 1 (comes second).
+		query = query.Order("CASE WHEN ub.user_id IS NOT NULL THEN 0 ELSE 1 END ASC")
+
+		// Then, add a secondary sort order (e.g., by name or ID) for consistent ordering within bookmarked/non-bookmarked groups
+		query = query.Order("users.id ASC") // Or any other consistent sort
 	}
 
 	err := query.Limit(limit).Offset(offset).Find(&users).Error
-	return users, err
-}
-
-// GetAllUsers retrieves all users with pagination (potentially for Sama Crew/Global ADMIN).
-func (r *UserRepository) GetAllUsers(limit, offset int) ([]models.User, error) {
-	var users []models.User
-	err := r.db.Preload("ClassroomModel").Limit(limit).Offset(offset).Find(&users).Error
 	return users, err
 }
 
@@ -99,16 +128,31 @@ func (r *UserRepository) UpdateUser(user *models.User) error {
 		// Check if new classroom is valid
 		if user.Classroom != nil {
 			classroom := models.Classroom{}
-			if err := tx.Where("school_id = ? AND classroom = ?", user.SchoolID, user.Classroom).Find(&classroom).Error; err != nil {
+			if err := tx.Where("school_id = ? AND classroom = ?", user.SchoolID, user.Classroom).First(&classroom).Error; err != nil {
 				return fmt.Errorf("failed to retrieve user's classroom: %w", err)
 			}
 
 			user.ClassroomID = &classroom.ID
 		}
 
-		// Use Save for full updates
-		if err := tx.Save(user).Error; err != nil {
+		user.BookmarkUsers = make([]models.User, len(user.BookmarkUserIDs))
+		// Get student's id first
+		for i, id := range user.BookmarkUserIDs {
+			var temp models.User
+			if err := tx.Select("id").First(&temp).Error; err != nil {
+				return fmt.Errorf("failed to find user with id %d: %w", id, err)
+			}
+			user.BookmarkUsers[i].ID = id
+		}
+
+		// 2. Create user
+		if err := tx.Omit(clause.Associations).Save(user).Error; err != nil {
 			return fmt.Errorf("failed to update user: %w", err)
+		}
+
+		// Update the link to bookmark using Replace (delete all previous link, then create every new link)
+		if err := tx.Model(user).Association("BookmarkUsers").Replace(user.BookmarkUsers); err != nil {
+			return fmt.Errorf("failed to update bookmark user: %w", err)
 		}
 
 		return nil

@@ -47,8 +47,9 @@ func (r *RecordRepository) GetAllRecords(
 	studentID, teacherID, activityID uint,
 	status string,
 	limit, offset int,
-) ([]models.Record, error) {
+) ([]models.Record, int, error) {
 	var records []models.Record
+	var count int64
 	query := r.db.Model(&models.Record{})
 
 	if studentID != 0 {
@@ -67,8 +68,18 @@ func (r *RecordRepository) GetAllRecords(
 	// Add preloads if you want to fetch related data with the records
 	// query = query.Preload("Activity").Preload("School").Preload("Student").Preload("Teacher")
 
-	err := query.Limit(limit).Offset(offset).Find(&records).Error
-	return records, err
+	countQuery := query
+	err := countQuery.Count(&count).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count records: %w", err)
+	}
+
+	err = query.Limit(limit).Offset(offset).Find(&records).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to retrive records: %w", err)
+	}
+
+	return records, int(count), nil
 }
 
 // UpdateRecord updates an existing record.
@@ -94,15 +105,12 @@ func (r *RecordRepository) DeleteRecord(id uint) error {
 
 // CountRecords returns the total number of record records, optionally filtered.
 func (r *RecordRepository) CountRecords(
-	schoolID, studentID, teacherID, activityID uint,
+	studentID, teacherID, activityID uint,
 	status string,
-) (int64, error) {
+) (int, error) {
 	var count int64
 	query := r.db.Model(&models.Record{})
 
-	if schoolID != 0 {
-		query = query.Where("school_id = ?", schoolID)
-	}
 	if studentID != 0 {
 		query = query.Where("student_id = ?", studentID)
 	}
@@ -117,5 +125,5 @@ func (r *RecordRepository) CountRecords(
 	}
 
 	err := query.Count(&count).Error
-	return count, err
+	return int(count), err
 }

@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"sama/sama-backend-2025/src/models" // Adjust import path
 )
@@ -55,6 +56,20 @@ func (r *SchoolRepository) GetSchoolByID(id uint) (*models.School, error) {
 		return nil, fmt.Errorf("failed to retrieve school by ID: %w", err)
 	}
 	return &school, nil
+}
+
+// GetSchoolSemesterAndSchoolYearByID retrieves a school by its primary ID.
+func (r *SchoolRepository) GetSchoolSemesterAndSchoolYearByID(id uint) (uint, uint, error) {
+	var school models.School
+	err := r.db.Select("semester", "school_year").First(&school, id).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, 0, fmt.Errorf("school with ID %d not found", id)
+		}
+		return 0, 0, fmt.Errorf("failed to retrieve semester and school_year by school ID: %w", err)
+	}
+	return school.Semester, school.SchoolYear, nil
 }
 
 // GetSchoolByEmail retrieves a school by its unique email.
@@ -110,6 +125,7 @@ func (r *SchoolRepository) UpdateSchool(school *models.School) error {
 			return fmt.Errorf("failed to retrieve school's classroom: %w", err)
 		}
 
+		// MUST NOT USE ASSOCIATE REPLACE SINCE CLASSROOM ID IS FORIEGN KEY TO OTHER TABLE
 		// Start of classroom update
 		var i, j int
 
@@ -158,7 +174,7 @@ func (r *SchoolRepository) UpdateSchool(school *models.School) error {
 
 		// -- end of classroom update --
 
-		if err := tx.Omit("ClassroomObjects").Updates(school).Error; err != nil {
+		if err := tx.Omit(clause.Associations).Updates(school).Error; err != nil {
 			return fmt.Errorf("failed to update school: %w", err)
 		}
 
