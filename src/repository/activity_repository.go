@@ -66,6 +66,21 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) 
 		Joins("LEFT JOIN schools ON activities.school_id = schools.id").
 		Preload("ExclusiveStudentObjects").
 		Preload("ExclusiveClassroomObjects").
+
+		// query := `
+		// 	SELECT
+		// 		ac.*,
+		// 		COALESCE(ac.deadline, s.default_activity_deadline) AS deadline,
+		// 		SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
+		// 		SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
+		// 		SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
+		// 		SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records
+		// 	FROM activities ac
+		// 	LEFT JOIN records r ON r.activity_id = ac.id
+		// 	LEFT JOIN schools s ON ac.school_id = s.id
+		// 	WHERE ac.id = ?
+		// `
+
 		First(&activity, id).Error
 
 	if err != nil {

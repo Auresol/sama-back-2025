@@ -57,7 +57,7 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 // GetUserByID retrieves a user by ID.
 func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 	var user models.User
-	err := r.db.Preload("School").Preload("ClassroomModel").First(&user, id).Error
+	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").First(&user, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with ID %d not found", id)
@@ -71,7 +71,7 @@ func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 // Useful for login authentication.
 func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Preload("School").Preload("ClassroomModel").Where("email = ?", email).First(&user).Error
+	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").First(&user, "email = ?", email).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with email %s not found", email)
@@ -86,7 +86,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, role string, limit, offset int) ([]models.User, error) {
 	var users []models.User
 	// Start building the query
-	query := r.db.Model(&models.User{}).Preload("ClassroomModel")
+	query := r.db.Model(&models.User{}).Joins("ClassroomObject")
 
 	// Apply school_id filter
 	query = query.Where("users.school_id = ?", schoolID)
@@ -128,7 +128,7 @@ func (r *UserRepository) UpdateUser(user *models.User) error {
 		// Check if new classroom is valid
 		if user.Classroom != nil {
 			classroom := models.Classroom{}
-			if err := tx.Where("school_id = ? AND classroom = ?", user.SchoolID, user.Classroom).First(&classroom).Error; err != nil {
+			if err := tx.First(&classroom, "school_id = ? AND classroom = ?", user.SchoolID, user.Classroom).Error; err != nil {
 				return fmt.Errorf("failed to retrieve user's classroom: %w", err)
 			}
 
