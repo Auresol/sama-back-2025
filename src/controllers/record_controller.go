@@ -35,7 +35,7 @@ type CreateRecordRequest struct {
 // UpdateRecordRequest defines the request body for updating an existing record.
 type UpdateRecordRequest struct {
 	Data   map[string]interface{} `json:"data" binding:"required" swaggertype:"object,string" example:"field:test"`
-	Amount int                    `json:"amount" binding:"reqiured,gt=0" example:"7"`
+	Amount int                    `json:"amount" binding:"required,gt=0" example:"7"`
 }
 
 // UpdateRecordRequest defines the request body for updating an existing record.

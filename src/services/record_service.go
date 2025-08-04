@@ -145,61 +145,25 @@ func (s *RecordService) UpdateRecord(record *models.Record, updatedByUserID uint
 	// Apply updates from the input `record` to `existingRecord`
 	// Only update fields that are explicitly provided or allowed to be changed.
 
-	// Handle Status change and log to history
-	if record.Status != "" && existingRecord.Status != record.Status {
-		existingRecord.Status = record.Status
-		// Append new status to history
-		newEntry := models.StatusHistory{
-			Status:     record.Status,
-			UpdateTime: time.Now(),
-			// UserID:    &updatedByUserID, // Add UserID to StatusHistory if you want to log who updated
-		}
-		existingRecord.StatusLogs = append(existingRecord.StatusLogs, newEntry)
-	} else if record.Status == "" {
-		// If status is not provided in update, retain existing status.
-		// No change, so no new history entry for status.
-	}
-
 	// Update other fields if provided in the input `record`
 	// Note: SchoolID, StudentID, TeacherID, ActivityID, SchoolYear, Semester are typically
 	// not updated after creation, or require specific business logic for updates.
 	// For this example, I'll allow updates if provided, but you might restrict this.
-	if record.ActivityID != 0 { // Assuming ActivityID is uint
-		existingRecord.ActivityID = record.ActivityID
-	}
-	if record.Data != nil { // Check if Data map is provided
-		existingRecord.Data = record.Data
-	}
-	if record.Advise != nil {
-		existingRecord.Advise = record.Advise
-	}
-	if record.StudentID != 0 {
-		existingRecord.StudentID = record.StudentID
-	}
-	// if record.TeacherID != 0 {
-	// 	existingRecord.TeacherID = record.TeacherID
-	// }
-	if record.SchoolYear != 0 {
-		existingRecord.SchoolYear = record.SchoolYear
-	}
-	if record.Semester != 0 {
-		existingRecord.Semester = record.Semester
-	}
-	if record.Amount != 0 { // Assuming 0 is not a valid amount or you handle it specifically
-		existingRecord.Amount = record.Amount
-	}
+	existingRecord.Data = record.Data
+	existingRecord.Amount = record.Amount
+
 	// StatusLogs is updated internally by service, not directly from DTO
 	// existingRecord.StatusLogs = record.StatusLogs // DO NOT directly assign from DTO
 
 	// Validate the updated existingRecord struct (including its tags)
-	if err := s.validator.Struct(existingRecord); err != nil {
-		return fmt.Errorf("validation failed for updated record: %w", err)
-	}
+	// if err := s.validator.Struct(existingRecord); err != nil {
+	// 	return fmt.Errorf("validation failed for updated record: %w", err)
+	// }
 
-	// Perform custom validations again for the updated data
-	if err := s.validateRecordData(existingRecord); err != nil {
-		return fmt.Errorf("updated record data validation failed: %w", err)
-	}
+	// // Perform custom validations again for the updated data
+	// if err := s.validateRecordData(existingRecord); err != nil {
+	// 	return fmt.Errorf("updated record data validation failed: %w", err)
+	// }
 
 	return s.recordRepo.UpdateRecord(existingRecord)
 }
