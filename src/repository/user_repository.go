@@ -57,7 +57,7 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 // GetUserByID retrieves a user by ID.
 func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 	var user models.User
-	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").First(&user, id).Error
+	err := r.db.Joins("School").Joins("ClassroomObject", DB.Select("classroom")).Preload("BookmarkUsers").First(&user, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with ID %d not found", id)
