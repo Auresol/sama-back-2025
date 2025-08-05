@@ -57,7 +57,7 @@ func (r *UserRepository) CreateUser(user *models.User) error {
 // GetUserByID retrieves a user by ID.
 func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 	var user models.User
-	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").First(&user, id).Error
+	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").Preload("BookmarkUsers").First(&user, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with ID %d not found", id)
@@ -71,7 +71,7 @@ func (r *UserRepository) GetUserByID(id uint) (*models.User, error) {
 // Useful for login authentication.
 func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").First(&user, "email = ?", email).Error
+	err := r.db.Model(&models.User{}).Joins("School").Joins("ClassroomObject").Preload("BookmarkUsers").First(&user, "users.email = ?", email).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("user with email %s not found", email)
@@ -90,11 +90,6 @@ func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, role string, 
 
 	// Apply school_id filter
 	query = query.Where("users.school_id = ?", schoolID)
-
-	// Apply role filter if provided
-	if role != "" {
-		query = query.Where("users.role = ?", role)
-	}
 
 	// Apply role filter if provided
 	if role != "" {

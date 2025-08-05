@@ -479,6 +479,7 @@ func (h *SchoolController) RevertSemester(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "School ID"
+// @Param name query string false "Filtered by role"
 // @Param role query string false "Filtered by role"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
@@ -495,11 +496,11 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 		return
 	}
 
-	// Authorization: Only ADMINs (for their school) or SAMA can access this
-	if claims.Role != "ADMIN" && claims.Role != "SAMA" {
-		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
-		return
-	}
+	// // Authorization: Only ADMINs (for their school) or SAMA can access this
+	// if claims.Role != "ADMIN" && claims.Role != "SAMA" {
+	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
+	// 	return
+	// }
 
 	schoolID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -513,6 +514,7 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 		return
 	}
 
+	// name := c.DefaultQuery("name", "")
 	status := c.DefaultQuery("role", "")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
