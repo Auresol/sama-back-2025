@@ -479,7 +479,7 @@ func (h *SchoolController) RevertSemester(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "School ID"
-// @Param name query string false "Filtered by role"
+// @Param name query string false "Filtered by name"
 // @Param role query string false "Filtered by role"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
@@ -514,12 +514,12 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 		return
 	}
 
-	// name := c.DefaultQuery("name", "")
+	name := c.DefaultQuery("name", "")
 	status := c.DefaultQuery("role", "")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, status, limit, offset)
+	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, name, status, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return
@@ -575,7 +575,7 @@ func (h *SchoolController) GetStatistic(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, "", limit, offset)
+	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, "", "", limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return
