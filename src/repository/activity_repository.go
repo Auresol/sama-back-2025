@@ -118,6 +118,7 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID, semester, schoo
 
 	// Apply primary filters
 	query = query.Where("activities.semester = ? AND activities.school_year = ?", semester, schoolYear)
+	countQuery := r.db.Model(&models.Activity{}).Where("activities.semester = ? AND activities.school_year = ?", semester, schoolYear)
 
 	// Apply Preloads (these will still work correctly because we're using GORM's builder)
 	query = query. // Preload School model (might not be necessary if you only need default_activity_deadline)
@@ -128,14 +129,15 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID, semester, schoo
 	// Apply ownerID filter
 	if ownerID != 0 {
 		query = query.Where("activities.owner_id = ?", ownerID) // Use activities.owner_id for clarity
+		countQuery = countQuery.Where("activities.owner_id = ?", ownerID)
 	}
 
 	// Apply schoolID filter (if different from the one in the main WHERE clause)
 	if schoolID != 0 {
 		query = query.Where("activities.school_id = ?", schoolID) // Use activities.school_id for clarity
+		countQuery = countQuery.Where("activities.school_id = ?", schoolID)
 	}
 
-	countQuery := query
 	err := countQuery.Count(&count).Error
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count acvitities: %w", err)
