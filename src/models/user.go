@@ -27,7 +27,7 @@ type User struct {
 
 	ClassroomID     *uint      `json:"-"`
 	ClassroomObject *Classroom `json:"-" gorm:"foreignKey:ClassroomID"`
-	School          School     `json:"school" gorm:"foreignKey:SchoolID"`
+	School          School     `json:"school,omitzero" gorm:"foreignKey:SchoolID"`
 	Activities      []Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 	BookmarkUsers   []User     `json:"-" gorm:"many2many:user_bookmarks"`
 

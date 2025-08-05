@@ -31,7 +31,7 @@ func (r *RecordRepository) GetRecordByID(id uint) (*models.Record, error) {
 	var record models.Record
 	// Preload any associations if needed (e.g., Activity, School, Student, Teacher)
 	// For example: .Preload("Activity").Preload("School")...
-	err := r.db.First(&record, id).Error
+	err := r.db.Joins("Teacher").First(&record, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("record with ID %d not found", id)

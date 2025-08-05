@@ -57,31 +57,38 @@ func (r *ActivityRepository) CreateActivity(activity *models.Activity) error {
 }
 
 // GetActivityByID retrieves an activity by its ID, preloading custom student IDs.
-func (r *ActivityRepository) GetActivityByID(id uint) (*models.Activity, error) {
-	var activity models.Activity
+func (r *ActivityRepository) GetActivityByID(id uint) (*models.ActivityWithStatistic, error) {
+	var activity models.ActivityWithStatistic
 
-	// Start building the query
-	err := r.db.Model(&models.Activity{}).
-		Select("activities.*, COALESCE(activities.deadline, schools.default_activity_deadline) AS deadline").
-		Joins("LEFT JOIN schools ON activities.school_id = schools.id").
+	query := `
+        SELECT 
+            ac.*,
+            COALESCE(ac.deadline, s.default_activity_deadline) AS deadline,
+            SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
+            SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
+            SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
+            SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records 
+        FROM activities ac
+        LEFT JOIN records r ON r.activity_id = ac.id
+        LEFT JOIN schools s ON ac.school_id = s.id
+        WHERE ac.id = ?
+        GROUP BY ac.id, s.default_activity_deadline
+    `
+
+	// Execute the raw query and scan the result into the struct.
+	err := r.db.Raw(query, id).Scan(&activity).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("activity with ID %d not found", id)
+		}
+		return nil, fmt.Errorf("failed to retrieve activity with records aggregates by ID: %w", err)
+	}
+
+	err = r.db.Model(&activity.Activity).
 		Preload("ExclusiveStudentObjects").
 		Preload("ExclusiveClassroomObjects").
-
-		// query := `
-		// 	SELECT
-		// 		ac.*,
-		// 		COALESCE(ac.deadline, s.default_activity_deadline) AS deadline,
-		// 		SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
-		// 		SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
-		// 		SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
-		// 		SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records
-		// 	FROM activities ac
-		// 	LEFT JOIN records r ON r.activity_id = ac.id
-		// 	LEFT JOIN schools s ON ac.school_id = s.id
-		// 	WHERE ac.id = ?
-		// `
-
-		First(&activity, id).Error
+		Where("id = ?", id).
+		First(&activity.Activity).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

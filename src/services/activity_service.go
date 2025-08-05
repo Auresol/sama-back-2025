@@ -88,7 +88,7 @@ func (s *ActivityService) CreateActivity(activity *models.Activity) error {
 }
 
 // GetActivityByID retrieves an activity by its ID.
-func (s *ActivityService) GetActivityByID(id uint) (*models.Activity, error) {
+func (s *ActivityService) GetActivityByID(id uint) (*models.ActivityWithStatistic, error) {
 	return s.activityRepo.GetActivityByID(id)
 }
 
