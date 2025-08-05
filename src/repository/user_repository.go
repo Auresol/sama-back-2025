@@ -87,7 +87,7 @@ func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, name, role st
 	var users []models.User
 	var count int64
 	// Start building the query
-	query := r.db.Joins("ClassroomObject", DB.Select("classroom"))
+	query := r.db.Model(&models.User{}).Joins("ClassroomObject", DB.Select("classroom"))
 
 	// Apply school_id filter
 	query = query.Where("users.school_id = ?", schoolID)
