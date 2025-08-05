@@ -14,6 +14,7 @@ type Config struct {
 	JWT        JWTConfig
 	RefreshJWT RefreshJWTConfig
 	Logging    LoggingConfig
+	S3         S3Config
 }
 
 type DatabaseConfig struct {
@@ -43,6 +44,12 @@ type RefreshJWTConfig struct {
 type LoggingConfig struct {
 	Level string
 	File  string
+}
+
+type S3Config struct {
+	Region                   string
+	Bucket                   string
+	PreSignedLifeTimeMinutes int
 }
 
 func LoadConfig() *Config {
@@ -75,6 +82,11 @@ func LoadConfig() *Config {
 		Logging: LoggingConfig{
 			Level: getEnv("LOG_LEVEL", "info"),
 			File:  getEnv("LOG_FILE", "logs/app.log"),
+		},
+		S3: S3Config{
+			Region:                   getEnv("S3_REGION", "ap-northeast-2"),
+			Bucket:                   getEnv("S3_BUCKET_NAME", "test-bucket"),
+			PreSignedLifeTimeMinutes: getIntEnv("S3_PRESIGNED_LIFETIME_MINUTE", 15),
 		},
 	}
 }

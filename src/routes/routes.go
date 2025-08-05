@@ -4,6 +4,7 @@ import (
 	"sama/sama-backend-2025/src/config"
 	"sama/sama-backend-2025/src/controllers"
 	"sama/sama-backend-2025/src/middlewares"
+	"sama/sama-backend-2025/src/pkg"
 	"sama/sama-backend-2025/src/services"
 	"sama/sama-backend-2025/src/utils"
 
@@ -19,6 +20,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 	router := gin.Default()
 
 	validate := utils.Validate
+	s3Client := pkg.NewS3Client(*cfg)
 
 	// Initialize services
 	authService := services.NewAuthService(
@@ -28,7 +30,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		cfg.RefreshJWT.Expiry,
 		validate,
 	)
-	userService := services.NewUserService(validate)
+	userService := services.NewUserService(s3Client, validate)
 	schoolService := services.NewSchoolService(validate)
 	activityService := services.NewActivityService(validate)
 	recordService := services.NewRecordService(validate)
@@ -70,6 +72,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		authRoutes.PUT("/user/:id", userController.UpdateUserProfile)
 		authRoutes.DELETE("/user/:id", userController.DeleteUser)
 		authRoutes.GET("/user/:id/activity", userController.GetAssignedActivities)
+		authRoutes.POST("/user/presigned-url", userController.RequestProfilePresignedURL)
 
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
 		authRoutes.PUT("/school/:id", schoolController.UpdateSchool)

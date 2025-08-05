@@ -349,3 +349,32 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 // 	// For now, returning a placeholder response
 // 	ctx.JSON(http.StatusOK, []models.Record{}) // Return an empty array or mock data
 // }
+
+// RequestProfilePresignedURL generate presigned url for image uploading.
+// @Summary Get presigned url for image uploading
+// @Description Retrieve the profile details of the currently authenticated user.
+// @Tags User
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} SuccessfulResponse "User deleted successfully"
+// @Failure 401 {object} ErrorResponse "Unauthorized (missing or invalid token)"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /user/presigned-url [post]
+func (h *UserController) RequestProfilePresignedURL(c *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	url, value, err := h.userService.RequestProfilePicturePresignedURL(claims.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to generate presigned: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"URL":   url,
+		"value": value,
+	})
+}

@@ -1,0 +1,9 @@
+curl --request POST 'https://sama-dev-40c55619-df0d-4d08-9c72-9db18d6d7dd1.s3.ap-northeast-2.amazonaws.com' \
+--form 'key="test/hello.png"' \
+--form 'X-Amz-Algorithm="AWS4-HMAC-SHA256"' \
+--form 'X-Amz-Credential=""' \
+--form 'X-Amz-Date=""' \
+--form 'X-Amz-Signature=""' \
+--form 'policy=""' \
+--form 'file=@/home/auresol' \
+--header 'Content-Type: multipart/form-data'
