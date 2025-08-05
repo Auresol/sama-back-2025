@@ -99,11 +99,18 @@ func (r *SchoolRepository) GetSchoolByShortName(shortName string) (*models.Schoo
 }
 
 // GetAllSchools retrieves all schools with pagination.
-func (r *SchoolRepository) GetAllSchools(limit, offset int) ([]models.School, error) {
+func (r *SchoolRepository) GetAllSchools(limit, offset int) ([]models.School, int, error) {
 	var schools []models.School
-	err := r.db.Preload("ClassroomObjects").Limit(limit).Offset(offset).Find(&schools).Error
+	var count int64
 
-	return schools, err
+	err := r.db.Model(&models.School{}).Count(&count).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count schools: %w", err)
+	}
+
+	err = r.db.Preload("ClassroomObjects").Limit(limit).Offset(offset).Find(&schools).Error
+
+	return schools, int(count), err
 }
 
 // UpdateSchool updates an existing school record.

@@ -101,8 +101,9 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.ActivityWithStati
 
 // GetAllActivities retrieves all activities with pagination, optionally filtering by owner ID or school ID/year/semester.
 // This method can be expanded for more complex filtering.
-func (r *ActivityRepository) GetAllActivities(ownerID, schoolID, semester, schoolYear uint, limit, offset int) ([]models.Activity, error) {
+func (r *ActivityRepository) GetAllActivities(ownerID, schoolID, semester, schoolYear uint, limit, offset int) ([]models.Activity, int, error) {
 	var activities []models.Activity
+	var count int64
 	// Start building the query
 	query := r.db.Model(&models.Activity{})
 
@@ -134,8 +135,14 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID, semester, schoo
 		query = query.Where("activities.school_id = ?", schoolID) // Use activities.school_id for clarity
 	}
 
-	err := query.Limit(limit).Offset(offset).Find(&activities).Error
-	return activities, err
+	countQuery := query
+	err := countQuery.Count(&count).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count acvitities: %w", err)
+	}
+
+	err = query.Limit(limit).Offset(offset).Find(&activities).Error
+	return activities, int(count), err
 }
 
 func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear uint) ([]models.ActivityWithStatistic, error) {

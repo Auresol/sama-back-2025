@@ -56,14 +56,6 @@ type RejectRecordRequest struct {
 type UnsendRecordRequest struct {
 }
 
-// PaginateRecordsResponse represents the response body for retrieve records with paginate
-type PaginateRecordsResponse struct {
-	Records []models.Record `json:"data"`
-	Offset  int             `json:"offset" example:"0"`
-	Limit   int             `json:"limit" example:"10"`
-	Total   int             `json:"total" example:"20"`
-}
-
 // CreateRecord handles creating a new record.
 // @Summary Create a new record
 // @Description Create a new activity record with associated student, teacher, school, and activity details.

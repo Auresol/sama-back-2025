@@ -93,13 +93,13 @@ func (s *ActivityService) GetActivityByID(id uint) (*models.ActivityWithStatisti
 }
 
 // GetAllActivities retrieves activities with filtering and pagination.
-func (s *ActivityService) GetAllActivities(ownerID, schoolID, semester, schoolYear uint, limit, offset int) ([]models.Activity, error) {
+func (s *ActivityService) GetAllActivities(ownerID, schoolID, semester, schoolYear uint, limit, offset int) ([]models.Activity, int, error) {
 	// if either semester of school year is invalid, get current semester and year
 	if semester == 0 || schoolYear == 0 {
 		var err error
 		semester, schoolYear, err = s.schoolRepo.GetSchoolSemesterAndSchoolYearByID(schoolID)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 	}
 

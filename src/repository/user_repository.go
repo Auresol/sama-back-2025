@@ -83,8 +83,9 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 
 // GetUsersBySchoolID retrieves all users belonging to a specific school with pagination.
 // This supports the "only able to access data from their school" feature.
-func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, name, role string, limit, offset int) ([]models.User, error) {
+func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, name, role string, limit, offset int) ([]models.User, int, error) {
 	var users []models.User
+	var count int64
 	// Start building the query
 	query := r.db.Joins("ClassroomObject", DB.Select("classroom"))
 
@@ -117,8 +118,14 @@ func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, name, role st
 		query = query.Order("users.id ASC") // Or any other consistent sort
 	}
 
-	err := query.Limit(limit).Offset(offset).Find(&users).Error
-	return users, err
+	countQuery := query
+	err := countQuery.Count(&count).Error
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count users: %w", err)
+	}
+
+	err = query.Limit(limit).Offset(offset).Find(&users).Error
+	return users, int(count), err
 }
 
 // UpdateUser updates an existing user's general profile information.

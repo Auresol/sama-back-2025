@@ -188,7 +188,7 @@ func (h *SchoolController) GetSchoolByID(c *gin.Context) {
 // @Produce json
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
-// @Success 200 {array} models.School "List of schools retrieved successfully"
+// @Success 200 {object} PaginateSchoolsResponse "List of schools retrieved successfully"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
@@ -208,13 +208,20 @@ func (h *SchoolController) GetAllSchools(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	schools, err := h.schoolService.GetAllSchools(limit, offset)
+	schools, count, err := h.schoolService.GetAllSchools(limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve schools: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, schools)
+	response := PaginateSchoolsResponse{
+		Schools: schools,
+		Limit:   limit,
+		Offset:  offset,
+		Total:   count,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // UpdateSchool handles updating an existing school.
@@ -483,7 +490,7 @@ func (h *SchoolController) RevertSemester(c *gin.Context) {
 // @Param role query string false "Filtered by role"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
-// @Success 200 {array} models.User "List of users retrieved successfully"
+// @Success 200 {object} PaginateUsersResponse "List of users retrieved successfully"
 // @Failure 400 {object} ErrorResponse "Invalid school ID or pagination parameters"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
@@ -519,7 +526,7 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, name, status, limit, offset)
+	users, count, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, name, status, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return
@@ -529,7 +536,15 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 	for i := range users {
 		users[i].Password = ""
 	}
-	c.JSON(http.StatusOK, users)
+
+	response := PaginateUsersResponse{
+		Users:  users,
+		Limit:  limit,
+		Offset: offset,
+		Total:  count,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // GetStatistic get statistic based on activity_id and classroom
@@ -541,7 +556,7 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 // @Param id path int true "School ID"
 // @Param classroom query string false "Classroom string to query"
 // @Param activity_id query string false "Activity id list seperate by \"|\""
-// @Success 200 {array} models.User "List of users retrieved successfully"
+// @Success 200 {object} PaginateUsersResponse "List of users retrieved successfully"
 // @Failure 400 {object} ErrorResponse "Invalid school ID or pagination parameters"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
@@ -575,7 +590,7 @@ func (h *SchoolController) GetStatistic(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, "", "", limit, offset)
+	users, count, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, "", "", limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return
@@ -585,5 +600,13 @@ func (h *SchoolController) GetStatistic(c *gin.Context) {
 	for i := range users {
 		users[i].Password = ""
 	}
-	c.JSON(http.StatusOK, users)
+
+	response := PaginateUsersResponse{
+		Users:  users,
+		Limit:  limit,
+		Offset: offset,
+		Total:  count,
+	}
+
+	c.JSON(http.StatusOK, response)
 }

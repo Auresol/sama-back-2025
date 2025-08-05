@@ -71,7 +71,7 @@ func (s *SchoolService) GetSchoolByShortName(shortName string) (*models.School, 
 }
 
 // GetAllSchools retrieves all schools with pagination.
-func (s *SchoolService) GetAllSchools(limit, offset int) ([]models.School, error) {
+func (s *SchoolService) GetAllSchools(limit, offset int) ([]models.School, int, error) {
 	return s.schoolRepo.GetAllSchools(limit, offset)
 }
 

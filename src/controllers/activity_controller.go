@@ -222,7 +222,7 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 // @Param school_year query int false "Filter by School Year"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
-// @Success 200 {array} models.Activity "List of activities retrieved successfully"
+// @Success 200 {object} PaginateActivitiesResponse "List of activities retrieved successfully"
 // @Failure 400 {object} ErrorResponse "Invalid query parameters"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions)"
@@ -264,13 +264,20 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 	}
 	// SAMA has no restrictions on ownerID or schoolID.
 
-	activities, err := c.activityService.GetAllActivities(uint(ownerID), uint(schoolID), uint(semester), uint(schoolYear), limit, offset)
+	activities, count, err := c.activityService.GetAllActivities(uint(ownerID), uint(schoolID), uint(semester), uint(schoolYear), limit, offset)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve activities: " + err.Error()})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, activities)
+	response := PaginateActivitiesResponse{
+		Activities: activities,
+		Limit:      limit,
+		Offset:     offset,
+		Total:      count,
+	}
+
+	ctx.JSON(http.StatusOK, response)
 }
 
 // UpdateActivity handles updating an existing activity.
