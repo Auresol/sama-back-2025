@@ -96,7 +96,7 @@ func (s *UserService) UpdateUserProfile(user *models.User) error {
 func (s *UserService) RequestProfilePicturePresignedURL(userID uint) (string, map[string]string, error) {
 	ctx := context.Background()
 	postRequest, err := s.s3Client.PresignPostObject(ctx, "test/hello.png")
-	if err != nil {
+	if err != nil || postRequest == nil {
 		return "", nil, err
 	}
 

@@ -60,47 +60,49 @@ func LoadConfig() *Config {
 
 	return &Config{
 		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnv("DB_PORT", "5432"),
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", "password"),
-			Name:     getEnv("DB_NAME", "sama_db"),
-			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+			Host:     getEnv("DB_HOST"),
+			Port:     getEnv("DB_PORT"),
+			User:     getEnv("DB_USER"),
+			Password: getEnv("DB_PASSWORD"),
+			Name:     getEnv("DB_NAME"),
+			SSLMode:  getEnv("DB_SSLMODE"),
 		},
 		Server: ServerConfig{
-			Port: getEnv("SERVER_PORT", "8080"),
-			Mode: getEnv("SERVER_MODE", "debug"),
+			Port: getEnv("SERVER_PORT"),
+			Mode: getEnv("SERVER_MODE"),
 		},
 		JWT: JWTConfig{
-			Secret: getEnv("JWT_SECRET", "your-secret-key-here"),
-			Expiry: getIntEnv("JWT_EXPIRY", 7*24*60), // 1 day
+			Secret: getEnv("JWT_SECRET"),
+			Expiry: getIntEnv("JWT_EXPIRY_MINUTE"),
 		},
 		RefreshJWT: RefreshJWTConfig{
-			Secret: getEnv("REFRESH_JWT_SECRET", "your-secret-key-here"),
-			Expiry: getIntEnv("REFRESH_JWT_EXPIRY", 30*24*60), // 1 month
+			Secret: getEnv("REFRESH_JWT_SECRET"),
+			Expiry: getIntEnv("REFRESH_JWT_EXPIRY_MINUTE"),
 		},
 		Logging: LoggingConfig{
-			Level: getEnv("LOG_LEVEL", "info"),
-			File:  getEnv("LOG_FILE", "logs/app.log"),
+			Level: getEnv("LOG_LEVEL"),
+			File:  getEnv("LOG_FILE"),
 		},
 		S3: S3Config{
-			Region:                   getEnv("S3_REGION", "ap-northeast-2"),
-			Bucket:                   getEnv("S3_BUCKET_NAME", "test-bucket"),
-			PreSignedLifeTimeMinutes: getIntEnv("S3_PRESIGNED_LIFETIME_MINUTE", 15),
+			Region:                   getEnv("S3_REGION"),
+			Bucket:                   getEnv("S3_BUCKET_NAME"),
+			PreSignedLifeTimeMinutes: getIntEnv("S3_PRESIGNED_LIFETIME_MINUTE"),
 		},
 	}
 }
 
-func getEnv(key, defaultValue string) string {
+func getEnv(key string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
 	}
-	return defaultValue
+	log.Fatalln("enviroment variable is missing: " + key)
+	return ""
 }
 
-func getIntEnv(key string, defaultValue int) int {
+func getIntEnv(key string) int {
 	if value, err := strconv.Atoi(os.Getenv(key)); err == nil {
 		return value
 	}
-	return defaultValue
+	log.Fatalln("enviroment variable is missing: " + key)
+	return 0
 }
