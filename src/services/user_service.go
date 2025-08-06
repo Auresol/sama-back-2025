@@ -1,10 +1,8 @@
 package services
 
 import (
-	"context"
 	"fmt"
 	"sama/sama-backend-2025/src/models"
-	"sama/sama-backend-2025/src/pkg"
 	"sama/sama-backend-2025/src/repository"
 
 	"github.com/go-playground/validator/v10"
@@ -13,17 +11,15 @@ import (
 // userService handles business logic for user accounts.
 type UserService struct {
 	userRepo   *repository.UserRepository
-	s3Client   *pkg.S3Client
 	validator  *validator.Validate
 	jwtSecret  string // JWT secret for token generation
 	jwtExpMins int    // JWT expiration in minutes
 }
 
 // NewuserService creates a new instance of userService.
-func NewUserService(s3Client *pkg.S3Client, validate *validator.Validate) *UserService {
+func NewUserService(validate *validator.Validate) *UserService {
 	return &UserService{
 		userRepo:  repository.NewUserRepository(),
-		s3Client:  s3Client,
 		validator: validate,
 	}
 }
@@ -93,15 +89,15 @@ func (s *UserService) UpdateUserProfile(user *models.User) error {
 // }
 
 // UpdateProfilePicture updates a user's profile picture URL.
-func (s *UserService) RequestProfilePicturePresignedURL(userID uint) (string, map[string]string, error) {
-	ctx := context.Background()
-	postRequest, err := s.s3Client.PresignPostObject(ctx, "test/hello.png")
-	if err != nil || postRequest == nil {
-		return "", nil, err
-	}
+// func (s *UserService) RequestProfilePicturePresignedURL(userID uint) (string, map[string]string, error) {
+// 	ctx := context.Background()
+// 	postRequest, err := s.s3Client.PresignPostObject(ctx, "test/hello.png")
+// 	if err != nil || postRequest == nil {
+// 		return "", nil, err
+// 	}
 
-	return postRequest.URL, postRequest.Values, nil
-}
+// 	return postRequest.URL, postRequest.Values, nil
+// }
 
 // DeleteProfilePicture removes a user's profile picture URL.
 func (s *UserService) DeleteProfilePicture(userID uint) error {

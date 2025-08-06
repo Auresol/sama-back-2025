@@ -360,21 +360,21 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized (missing or invalid token)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /user/presigned-url [post]
-func (h *UserController) RequestProfilePresignedURL(c *gin.Context) {
-	claims, ok := middlewares.GetUserClaimsFromContext(c)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-		return
-	}
+// func (h *UserController) RequestProfilePresignedURL(c *gin.Context) {
+// 	claims, ok := middlewares.GetUserClaimsFromContext(c)
+// 	if !ok {
+// 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+// 		return
+// 	}
 
-	url, value, err := h.userService.RequestProfilePicturePresignedURL(claims.UserID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to generate presigned: " + err.Error()})
-		return
-	}
+// 	url, value, err := h.userService.RequestProfilePicturePresignedURL(claims.UserID)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to generate presigned: " + err.Error()})
+// 		return
+// 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"URL":   url,
-		"value": value,
-	})
-}
+// 	c.JSON(http.StatusOK, gin.H{
+// 		"URL":   url,
+// 		"value": value,
+// 	})
+// }

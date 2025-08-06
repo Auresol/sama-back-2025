@@ -30,10 +30,11 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		cfg.RefreshJWT.Expiry,
 		validate,
 	)
-	userService := services.NewUserService(s3Client, validate)
+	userService := services.NewUserService(validate)
 	schoolService := services.NewSchoolService(validate)
 	activityService := services.NewActivityService(validate)
 	recordService := services.NewRecordService(validate)
+	imageService := services.NewImageService(s3Client)
 
 	// Initialize handlers
 	authController := controllers.NewAuthController(authService, validate)
@@ -41,6 +42,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 	schoolController := controllers.NewSchoolController(schoolService, userService, validate)
 	activityController := controllers.NewActivityController(activityService, validate)
 	recordController := controllers.NewRecordController(recordService)
+	imageController := controllers.NewImageController(imageService)
 
 	// Swagger documentation
 	// docs.SwaggerInfo.BasePath = "/api/v1"
@@ -72,7 +74,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		authRoutes.PUT("/user/:id", userController.UpdateUserProfile)
 		authRoutes.DELETE("/user/:id", userController.DeleteUser)
 		authRoutes.GET("/user/:id/activity", userController.GetAssignedActivities)
-		authRoutes.POST("/user/presigned-url", userController.RequestProfilePresignedURL)
+		// authRoutes.POST("/user/presigned-url", userController.RequestProfilePresignedURL)
 
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
 		authRoutes.PUT("/school/:id", schoolController.UpdateSchool)
@@ -96,6 +98,9 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		authRoutes.PATCH("/record/:id/unsend", recordController.UnsendRecord)
 		authRoutes.PATCH("/record/:id/approve", recordController.ApproveRecord)
 		authRoutes.PATCH("/record/:id/reject", recordController.RejectRecord)
+
+		authRoutes.POST("/images/download-url", imageController.RequestDownloadPresignedURL)
+		authRoutes.POST("/images/upload-url", imageController.RequestUploadPresignedURL)
 	}
 
 	return router
