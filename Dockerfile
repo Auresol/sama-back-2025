@@ -46,6 +46,9 @@ COPY --from=builder /app/main .
 # Copy the generated swagger docs directory from the builder stage
 COPY --from=builder /app/docs ./docs
 
+# Copy the .env file from the build context (root of the project)
+COPY .env .env
+
 # Create logs directory and set ownership
 RUN mkdir -p /app/logs && \
     chown -R appuser:appgroup /app
