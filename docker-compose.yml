@@ -26,25 +26,13 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: sama-backend
+    # Use env_file to load all variables from the .env file
+    env_file:
+      - .env
+    # The DB_HOST must be the name of the PostgreSQL service inside the Docker network.
+    # We override it here so it doesn't try to use 'localhost' from the .env file.
     environment:
-      # Database Configuration
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-password}
-      DB_NAME: ${DB_NAME:-sama_db}
-      DB_SSLMODE: disable
-      
-      # Server Configuration
-      SERVER_PORT: 8080
-      SERVER_MODE: ${SERVER_MODE:-debug}
-      
-      # JWT Configuration
-      JWT_SECRET: ${JWT_SECRET:-your-secret-key-here}
-      JWT_EXPIRY: ${JWT_EXPIRY:-24h}
-      
-      # Logging Configuration
-      LOG_LEVEL: ${LOG_LEVEL:-info}
+      - DB_HOST=postgres
     ports:
       - "8080:8080"
       - "8083:8083"
