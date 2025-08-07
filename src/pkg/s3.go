@@ -25,6 +25,8 @@ type S3Client struct {
 func NewS3Client(config config.Config) *S3Client {
 
 	cfg, err := awsConfig.LoadDefaultConfig(context.TODO())
+	cfg.Region = config.S3.Region
+
 	if err != nil {
 		log.Fatal(err)
 	}
