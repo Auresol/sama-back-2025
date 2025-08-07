@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"context"
 	"net/http"
 
 	"sama/sama-backend-2025/src/middlewares"
@@ -71,7 +70,7 @@ func (h *ImageController) RequestUploadPresignedURL(c *gin.Context) {
 		return
 	}
 
-	presignedPostRequest, err := h.imageService.RequestUploadPresignedURL(context.Background(), userID, req.FileExtension)
+	presignedPostRequest, err := h.imageService.RequestUploadPresignedURL(c.Request.Context(), userID, req.FileExtension)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get presigned URL: " + err.Error()})
 		return
@@ -103,7 +102,7 @@ func (h *ImageController) RequestDownloadPresignedURL(c *gin.Context) {
 		return
 	}
 
-	presignedHTTPRequest, err := h.imageService.RequestDownloadPresignedURL(context.Background(), req.ObjectKey)
+	presignedHTTPRequest, err := h.imageService.RequestDownloadPresignedURL(c.Request.Context(), req.ObjectKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get presigned download URL: " + err.Error()})
 		return

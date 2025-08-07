@@ -71,7 +71,9 @@ func (c *S3Client) GetPresignedDeleteURL(ctx context.Context, objectKey string) 
 
 	if err != nil {
 		log.Printf("failed to generate a presigned delete request: %v\n", err)
+		return nil, err
 	}
+
 	return request, err
 }
 
@@ -93,6 +95,7 @@ func (c *S3Client) PresignPostObject(ctx context.Context, objectKey string) (*s3
 	})
 	if err != nil {
 		log.Printf("failed to generate a presigned post request: %v\n", err)
+		return nil, err
 	}
 	return request, nil
 }
