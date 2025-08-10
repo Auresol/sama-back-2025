@@ -131,3 +131,16 @@ func (s *SchoolService) DeleteSchool(id uint) error {
 func (s *SchoolService) CountSchools() (int64, error) {
 	return s.schoolRepo.CountSchools()
 }
+
+// // UpdateSchool updates an existing school's information.
+// func (s *SchoolService) GetSchoolStatisticByID(id uint) ([]models.User, int, int, error) {
+// 	// Fetch existing school to ensure it exists and to avoid overwriting unintended fields
+// 	school, err := s.schoolRepo.GetSchoolByID(id)
+// 	if err != nil {
+// 		return nil, 0, fmt.Errorf("school not found: %w", err)
+// 	}
+
+// 	users, err := s.userRepo.GetUsersBySchoolID(id)
+
+// 	return s.schoolRepo.UpdateSchool(school)
+// }

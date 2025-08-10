@@ -62,6 +62,12 @@ type UpdateSchoolRequest struct {
 	Classrooms              []string  `json:"classrooms" binding:"required" example:"1/1" validate:"required,dive,classroomregex"`
 }
 
+type SchoolStatisticResponse struct {
+	TotalFinished   uint          `json:"total_finished"`
+	TotalUnfinished uint          `json:"total_unfinished"`
+	Users           []models.User `json:"users"`
+}
+
 // CreateSchool handles the creation of a new school.
 // @Summary Create a new school
 // @Description Create a new school record. Requires ADMIN or Sama Crew role.
@@ -548,64 +554,60 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 }
 
 // GetStatistic get statistic based on activity_id and classroom
-// @Summary Get users by school ID
-// @Description Retrieve a list of users belonging to a specific school. Requires ADMIN or Sama Crew role.
+// @Summary Get statistic by school_id
+// @Description Retrieve a statistic of specific school.
 // @Tags School
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "School ID"
-// @Param classroom query string false "Classroom string to query"
-// @Param activity_id query string false "Activity id list seperate by \"|\""
-// @Success 200 {object} PaginateUsersResponse "List of users retrieved successfully"
-// @Failure 400 {object} ErrorResponse "Invalid school ID or pagination parameters"
+// @Param classroom query string true "Classroom string to query"
+// @Param activity_id query string false "Activity id list seperate by |"
+// @Param semester query int false "Filter by Semester"
+// @Param school_year query int false "Filter by School Year"
+// @Success 200 {object} SchoolStatisticResponse "List of users statistic retrieve successfully"
+// @Failure 400 {object} ErrorResponse "Invalid school ID or Activity id"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /school/{id}/statistic [get]
 func (h *SchoolController) GetStatistic(c *gin.Context) {
-	claims, ok := middlewares.GetUserClaimsFromContext(c)
+	_, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
 		return
 	}
 
-	// Authorization: Only ADMINs (for their school) or SAMA can access this
-	if claims.Role != "ADMIN" && claims.Role != "SAMA" {
-		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
-		return
-	}
+	// // Authorization: Only ADMINs (for their school) or SAMA can access this
+	// if claims.Role != "ADMIN" && claims.Role != "SAMA" {
+	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
+	// 	return
+	// }
 
-	schoolID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	_, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid school ID"})
 		return
 	}
 
-	// If ADMIN, ensure they are requesting users from their own school
-	if claims.Role == "ADMIN" && claims.SchoolID != uint(schoolID) {
-		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: ADMIN can only view users from their own school"})
-		return
-	}
+	// // If ADMIN, ensure they are requesting users from their own school
+	// if claims.Role == "ADMIN" && claims.SchoolID != uint(schoolID) {
+	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: ADMIN can only view users from their own school"})
+	// 	return
+	// }
 
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	// users, err := h.schoolService.GetSchoolStatisticByID(schoolID)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
+	// 	return
+	// }
 
-	users, count, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, "", "", limit, offset)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
-		return
-	}
+	users := make([]models.User, 1)
+	users[0].FinishedPercent = 50
 
-	// Omit passwords from response
-	for i := range users {
-		users[i].Password = ""
-	}
-
-	response := PaginateUsersResponse{
-		Users:  users,
-		Limit:  limit,
-		Offset: offset,
-		Total:  count,
+	response := SchoolStatisticResponse{
+		TotalUnfinished: 1,
+		TotalFinished:   0,
+		Users:           users,
 	}
 
 	c.JSON(http.StatusOK, response)

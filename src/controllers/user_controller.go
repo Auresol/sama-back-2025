@@ -98,10 +98,10 @@ func (h *UserController) GetUserByID(c *gin.Context) {
 	}
 
 	// STD are only allow for getMyProfile
-	if claims.Role == "STD" {
-		c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
-		return
-	}
+	// if claims.Role == "STD" {
+	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
+	// 	return
+	// }
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {

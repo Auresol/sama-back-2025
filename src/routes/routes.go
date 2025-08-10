@@ -82,6 +82,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		authRoutes.POST("/school/advance-semester", schoolController.AdvanceSemester)
 		authRoutes.POST("/school/revert-semester", schoolController.RevertSemester)
 		authRoutes.GET("/school/:id/user", schoolController.GetUsersBySchoolID)
+		authRoutes.GET("/school/:id/statistic", schoolController.GetStatistic)
 
 		authRoutes.POST("/activity", activityController.CreateActivity)
 		authRoutes.GET("/activity", activityController.GetAllActivities)

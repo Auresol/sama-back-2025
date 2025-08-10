@@ -31,6 +31,8 @@ type User struct {
 	Activities      []Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 	BookmarkUsers   []User     `json:"-" gorm:"many2many:user_bookmarks"`
 
+	FinishedPercent uint `json:"finished_percent,omitempty" gorm:"-:all"`
+
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index" swaggertype:"string"`
