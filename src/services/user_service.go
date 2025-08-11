@@ -103,7 +103,7 @@ func (s *UserService) UpdateUserProfile(user *models.User) error {
 // 	return postRequest.URL, postRequest.Values, nil
 // }
 
-func (r *UserService) GetUserStatistic(userID, schoolID, semester, schoolYear uint) (
+func (r *UserService) GetUserStatistic(userID, schoolID uint, activityIDs []uint, semester, schoolYear uint) (
 	activities []models.ActivityWithStatistic,
 	totalNonCreated,
 	totalCreated,
@@ -121,32 +121,53 @@ func (r *UserService) GetUserStatistic(userID, schoolID, semester, schoolYear ui
 		}
 	}
 
-	activities, err = r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear, true)
+	activities, err = r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear, false)
 	if err != nil {
 		err = fmt.Errorf("failed to retrieve activities: %w", err)
 		return
 	}
 
-	var finishedAmount float32
+	var filteredActivity []models.ActivityWithStatistic
+	var finishedAmount, filterCount float32
+	var pos int
 
 	for _, activity := range activities {
-		finishedAmount = float32(activity.FinishedAmount)
 
-		totalCreated += float32(activity.TotalCreatedRecords) / finishedAmount
-		totalSended += float32(activity.TotalSendedRecords) / finishedAmount
-		totalApproved += float32(activity.TotalApprovedRecords) / finishedAmount
-		totalRejected += float32(activity.TotalRejectedRecords) / finishedAmount
-		totalNonCreated += (finishedAmount - float32(
-			activity.TotalCreatedRecords+activity.TotalApprovedRecords+
-				activity.TotalRejectedRecords+activity.TotalSendedRecords)) / finishedAmount
+		// Move the cursor forward until activitiyIDs[pos] is equal or greater than activity.ID
+		for pos < len(activityIDs) && activityIDs[pos] < activity.ID {
+			pos++
+		}
+
+		// Reach the end of filter, meaning no more activity will be apply
+		if pos >= len(activityIDs) {
+			break
+		}
+
+		if activityIDs[pos] == activity.ID {
+			finishedAmount = float32(activity.FinishedAmount)
+
+			totalCreated += float32(activity.TotalCreatedRecords) / finishedAmount
+			totalSended += float32(activity.TotalSendedRecords) / finishedAmount
+			totalApproved += float32(activity.TotalApprovedRecords) / finishedAmount
+			totalRejected += float32(activity.TotalRejectedRecords) / finishedAmount
+			totalNonCreated += (finishedAmount - float32(
+				activity.TotalCreatedRecords+activity.TotalApprovedRecords+
+					activity.TotalRejectedRecords+activity.TotalSendedRecords)) / finishedAmount
+
+			filterCount += 1
+
+			filteredActivity = append(filteredActivity, activity)
+		}
 	}
 
-	size := float32(len(activities)) / 100
+	size := filterCount / 100
 	totalNonCreated /= size
 	totalApproved /= size
 	totalCreated /= size
 	totalRejected /= size
 	totalSended /= size
+
+	activities = filteredActivity
 
 	return
 }

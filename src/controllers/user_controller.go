@@ -8,6 +8,7 @@ import (
 	"sama/sama-backend-2025/src/middlewares"
 	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/services"
+	"sama/sama-backend-2025/src/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -329,6 +330,7 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 // @Tags User
 // @Security BearerAuth
 // @Param id path int true "User ID to get"
+// @Param activity_id query string true "Activity id list seperate by |"
 // @Param semester query int false "School semester"
 // @Param school_year query int false "School year"
 // @Produce json
@@ -349,6 +351,11 @@ func (c *UserController) GetUserStatisticByID(ctx *gin.Context) {
 		return
 	}
 
+	activityIDs, err := utils.SplitQueryUint(ctx.Query("activity_id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Failed to read activity_ids query: " + err.Error()})
+		return
+	}
 	semester, _ := strconv.ParseUint(ctx.DefaultQuery("semester", "0"), 10, 64)
 	schoolYear, _ := strconv.ParseUint(ctx.DefaultQuery("school_year", "0"), 10, 64)
 
@@ -359,7 +366,7 @@ func (c *UserController) GetUserStatisticByID(ctx *gin.Context) {
 		totalSended,
 		totalApproved,
 		totalRejected,
-		err := c.userService.GetUserStatistic(uint(id), claims.SchoolID, uint(semester), uint(schoolYear))
+		err := c.userService.GetUserStatistic(uint(id), claims.SchoolID, activityIDs, uint(semester), uint(schoolYear))
 
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve statistic: " + err.Error()})

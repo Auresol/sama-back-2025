@@ -626,3 +626,69 @@ func (h *SchoolController) GetSchoolStatisticByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+// GetSchoolStatisticFileByID get statistic file based on activity_id and classroom
+// @Summary Get statistic by school_id
+// @Description Retrieve a statistic of specific school.
+// @Tags School
+// @Security BearerAuth
+// @Produce json
+// @Param id path int true "School ID"
+// @Param classroom query string true "Classroom string to query"
+// @Param activity_id query string true "Activity id list seperate by |"
+// @Param semester query int false "Filter by Semester"
+// @Param school_year query int false "Filter by School Year"
+// @Success 200 {object} SchoolStatisticResponse "List of users statistic retrieve successfully"
+// @Failure 400 {object} ErrorResponse "Invalid school ID or Activity id"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /school/{id}/statistic [get]
+func (h *SchoolController) GetSchoolStatisticFileByID(c *gin.Context) {
+	_, ok := middlewares.GetUserClaimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
+
+	// // Authorization: Only ADMINs (for their school) or SAMA can access this
+	// if claims.Role != "ADMIN" && claims.Role != "SAMA" {
+	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions"})
+	// 	return
+	// }
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid school ID"})
+		return
+	}
+
+	classroom := c.Query("classroom")
+	activityIDs, err := utils.SplitQueryUint(c.Query("activity_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Failed to read activity_ids query: " + err.Error()})
+		return
+	}
+	semester, _ := strconv.ParseUint(c.DefaultQuery("semester", "0"), 10, 64)
+	schoolYear, _ := strconv.ParseUint(c.DefaultQuery("school_year", "0"), 10, 64)
+
+	// // If ADMIN, ensure they are requesting users from their own school
+	// if claims.Role == "ADMIN" && claims.SchoolID != uint(schoolID) {
+	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: ADMIN can only view users from their own school"})
+	// 	return
+	// }
+
+	usersWithStat, finished, unfinished, err := h.schoolService.GetSchoolStatisticByID(uint(id), classroom, activityIDs, uint(semester), uint(schoolYear))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve statistic: " + err.Error()})
+		return
+	}
+
+	response := SchoolStatisticResponse{
+		TotalFinished:   finished,
+		TotalUnfinished: unfinished,
+		Users:           usersWithStat,
+	}
+
+	c.JSON(http.StatusOK, response)
+}

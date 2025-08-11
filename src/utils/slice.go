@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -33,6 +34,11 @@ func SplitQueryUint(query string) ([]uint, error) {
 		}
 		params = append(params, uint(paramInt))
 	}
+
+	// Sort slices assending
+	sort.Slice(params, func(i, j int) bool {
+		return params[i] < params[j]
+	})
 
 	return params, nil
 }
