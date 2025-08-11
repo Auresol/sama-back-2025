@@ -60,9 +60,19 @@ type RefreshTokenRequest struct {
 
 // ValidateOtpRequest represents the request body for validating an OTP and resetting password.
 type ValidateOtpRequest struct {
-	Email       string `json:"email" binding:"required,email" validate:"required,email" example:"user@example.com"`
-	Otp         string `json:"code" binding:"required,len=6" validate:"required,len=6" example:"123456"` // Assuming 6-digit OTP
+	Email string `json:"email" binding:"required,email" validate:"required" example:"user@example.com"`
+	Otp   int    `json:"code" binding:"required" validate:"required" example:"123456"` // Assuming 6-digit OTP
+}
+
+// ValidateOtpRequest represents the request body for validating an OTP and resetting password.
+type ResetPasswordRequest struct {
+	ValidateOtpRequest
 	NewPassword string `json:"new_password" binding:"required,min=8" validate:"required,min=8,alphanumunderscore" example:"NewSecure_P@ss2"`
+}
+
+// RequestOtpRequest represents the request body for requesting an OTP.
+type RequestOtpRequest struct {
+	Email string `json:"email" binding:"required,email" validate:"required" example:"user@example.com"`
 }
 
 // RegisterUser handles user registration.
@@ -145,23 +155,13 @@ func (h *AuthController) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, LoginResponse{Token: token, RefreshToken: refreshToken})
 }
 
-// RequestOtpRequest represents the request body for requesting an OTP.
-type RequestOtpRequest struct {
-	Email string `json:"email" binding:"required,email" validate:"required,email" example:"user@example.com"`
-}
-
-// RequestOtpResponse represents the response body for a successful OTP request.
-type RequestOtpResponse struct {
-	Message string `json:"message" example:"OTP sent to your email"`
-}
-
 // RequestOtp handles requesting an OTP for password reset.
 // @Summary Request OTP for password reset
 // @Description Sends a One-Time Password (OTP) to the user's registered email address to initiate a password reset.
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param email_request body RequestOtpRequest true "User email to send OTP"
+// @Param user_otp_request body RequestOtpRequest true "User id to send OTP"
 // @Success 200 {object} SuccessfulResponse "OTP sended"
 // @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
 // @Failure 404 {object} ErrorResponse "User with this email not found"
@@ -174,19 +174,13 @@ func (h *AuthController) RequestOtp(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement actual OTP generation and sending logic in the service layer
-	// Example:
-	// err := h.userService.RequestPasswordResetOtp(req.Email)
-	// if err != nil {
-	//     if errors.Is(err, gorm.ErrRecordNotFound) {
-	//         c.JSON(http.StatusNotFound, ErrorResponse{Message: "User with this email not found"})
-	//         return
-	//     }
-	//     c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to request OTP: " + err.Error()})
-	//     return
-	// }
+	err := h.authService.RequestOtp(req.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to request OTP: " + err.Error()})
+		return
+	}
 
-	c.JSON(http.StatusOK, RequestOtpResponse{Message: "OTP sent to your email"})
+	c.JSON(http.StatusOK, SuccessfulResponse{"OTP sent to your email"})
 }
 
 // ValidateOtp handles validating an OTP and resetting the user's password.
@@ -196,7 +190,7 @@ func (h *AuthController) RequestOtp(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param otp_validation body ValidateOtpRequest true "OTP validation and new password details"
-// @Success 200 {object} SuccessfulResponse "OTP validated and password reset successfully"
+// @Success 200 {object} SuccessfulResponse "OTP validated successfully"
 // @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
 // @Failure 401 {object} ErrorResponse "Invalid OTP or email"
 // @Failure 500 {object} ErrorResponse "Internal server error"
@@ -210,18 +204,61 @@ func (h *AuthController) ValidateOtp(c *gin.Context) {
 
 	// TODO: Implement actual OTP validation and password reset logic in the service layer
 	// Example:
-	// token, err := h.userService.ValidateOtpAndResetPassword(req.Email, req.Otp, req.NewPassword)
-	// if err != nil {
-	//     if err.Error() == "invalid OTP or email" { // Custom error from service
-	//         c.JSON(http.StatusUnauthorized, ErrorResponse{Message: err.Error()})
-	//         return
-	//     }
-	//     c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate OTP and reset password: " + err.Error()})
-	//     return
-	// }
+	status, err := h.authService.VerifyOTP(req.Email, req.Otp)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate OTP and reset password: " + err.Error()})
+		return
+	}
 
-	// For demonstration, returning a dummy token
-	c.JSON(http.StatusOK, "Good to go")
+	if !status {
+		c.JSON(http.StatusBadGateway, ErrorResponse{Message: "Invalid or expried otp"})
+		return
+	}
+
+	c.JSON(http.StatusOK, SuccessfulResponse{"OTP validated successfully"})
+}
+
+// ResetPassword handles resetting the user's password.
+// @Summary reset password
+// @Description Validates the provided OTP and email, then allows the user to set a new password. Returns a reset token or success message.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param otp_validation body ResetPasswordRequest true "OTP validation and new password details"
+// @Success 200 {object} SuccessfulResponse "OTP validated and password reset successfully"
+// @Failure 400 {object} ErrorResponse "Invalid request payload or validation error"
+// @Failure 401 {object} ErrorResponse "Invalid OTP or email"
+// @Failure 500 {object} ErrorResponse "Internal server error"
+// @Router /password-reset/change-password [post]
+func (h *AuthController) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid request payload: " + err.Error()})
+		return
+	}
+
+	// TODO: Implement actual OTP validation and password reset logic in the service layer
+	// Example:
+	status, err := h.authService.VerifyOTP(req.Email, req.Otp)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to validate OTP and reset password: " + err.Error()})
+		return
+	}
+
+	if !status {
+		c.JSON(http.StatusBadGateway, ErrorResponse{Message: "Invalid or expried otp"})
+		return
+	}
+
+	err = h.authService.UpdateUserPassword(req.Email, req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to update user password: " + err.Error()})
+		return
+	}
+
+	err = h.authService.DeleteOTP(req.Email)
+
+	c.JSON(http.StatusOK, SuccessfulResponse{"OTP validated and password reset successfully"})
 }
 
 // RefreshToken handles refreshing a JWT access token using a refresh token.

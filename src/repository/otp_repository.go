@@ -15,19 +15,21 @@ type OTPRepository struct {
 }
 
 // NewOTPRepository creates a new OTP repository.
-func NewOTPRepository(db *gorm.DB) *OTPRepository {
-	return &OTPRepository{db: db}
+func NewOTPRepository() *OTPRepository {
+	return &OTPRepository{
+		db: GetDB(),
+	}
 }
 
 // CreateOrUpdateOTP generates a new OTP and saves it to the database.
 // It will also delete any existing OTP for the user to prevent conflicts.
-func (r *OTPRepository) CreateOrUpdateOTP(userID uint, email string) (*models.OTP, error) {
+func (r *OTPRepository) CreateOTP(userID uint) (*models.OTP, error) {
 	// Step 1: Generate a new OTP code and set its expiration
 	otpCode := utils.GenerateOTPCode()
 	expiresAt := time.Now().Add(5 * time.Minute)
 
 	// Step 2: Delete any existing OTP for the user to ensure uniqueness
-	if err := r.db.Where("user_id = ?", userID).Delete(&models.OTP{}).Error; err != nil {
+	if err := r.db.Delete(&models.OTP{}, "user_id = ?", userID).Error; err != nil {
 		return nil, fmt.Errorf("failed to delete existing OTP: %w", err)
 	}
 
@@ -46,7 +48,7 @@ func (r *OTPRepository) CreateOrUpdateOTP(userID uint, email string) (*models.OT
 }
 
 // VerifyOTP checks if a given OTP code is valid and not expired.
-func (r *OTPRepository) VerifyOTP(userID uint, code string) (bool, error) {
+func (r *OTPRepository) VerifyOTP(userID uint, code int) (bool, error) {
 	var otp models.OTP
 	result := r.db.Where("user_id = ? AND code = ?", userID, code).First(&otp)
 
@@ -62,10 +64,17 @@ func (r *OTPRepository) VerifyOTP(userID uint, code string) (bool, error) {
 		return false, nil // OTP is expired
 	}
 
-	// Delete the OTP after successful verification to prevent reuse
-	if err := r.db.Delete(&otp).Error; err != nil {
-		return false, fmt.Errorf("failed to delete OTP after verification: %w", err)
+	return true, nil
+}
+
+// DeleteOTP
+func (r *OTPRepository) DeleteOTP(userID uint) error {
+
+	result := r.db.Delete(&models.OTP{}, "user_id = ?", userID)
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete OTP: %w", result.Error)
 	}
 
-	return true, nil
+	return nil
 }

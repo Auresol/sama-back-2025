@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sama/sama-backend-2025/src/config"
 	"sama/sama-backend-2025/src/models"
+	"sama/sama-backend-2025/src/pkg"
 	"sama/sama-backend-2025/src/repository"
 	"sama/sama-backend-2025/src/utils"
 
@@ -16,6 +18,8 @@ import (
 // userService handles business logic for user accounts.
 type AuthService struct {
 	userRepo          *repository.UserRepository
+	otpRepo           *repository.OTPRepository
+	mailerClient      *pkg.MailerService
 	validator         *validator.Validate
 	jwtSecret         string // JWT secret for token generation
 	jwtExpMins        int    // JWT expiration in minutes
@@ -25,18 +29,18 @@ type AuthService struct {
 
 // NewuserService creates a new instance of userService.
 func NewAuthService(
-	jwtSecret string,
-	jwtExpMins int,
-	refreshJwtSecret string,
-	refreshJwtExpMins int,
+	cfg *config.Config,
+	mailerClient *pkg.MailerService,
 	validate *validator.Validate,
 ) *AuthService {
 	return &AuthService{
 		userRepo:          repository.NewUserRepository(),
-		jwtSecret:         jwtSecret,
-		jwtExpMins:        jwtExpMins,
-		refreshJwtSecret:  refreshJwtSecret,
-		refreshJwtExpMins: refreshJwtExpMins,
+		otpRepo:           repository.NewOTPRepository(),
+		mailerClient:      mailerClient,
+		jwtSecret:         cfg.JWT.Secret,
+		jwtExpMins:        cfg.JWT.Expiry,
+		refreshJwtSecret:  cfg.RefreshJWT.Secret,
+		refreshJwtExpMins: cfg.RefreshJWT.Expiry,
 		validator:         validate,
 	}
 }
@@ -112,15 +116,70 @@ func (s *AuthService) UpdatePassword(userID uint, newPassword string) error {
 	if !regexp.MustCompile(`^[a-zA-Z0-9_]+$`).MatchString(newPassword) {
 		return errors.New("password must contain only alphabets, numbers, or underscores")
 	}
-	if len(newPassword) < 8 { // Example simple validation: min length
-		return errors.New("password must be at least 8 characters long")
-	}
+	// if len(newPassword) < 8 { // Example simple validation: min length
+	// 	return errors.New("password must be at least 8 characters long")
+	// }
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash new password: %w", err)
 	}
 	return s.userRepo.UpdateUserPassword(userID, string(hashedPassword))
+}
+
+func (s *AuthService) RequestOtp(email string) error {
+
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve user: %w", err)
+	}
+
+	otp, err := s.otpRepo.CreateOTP(user.ID)
+	if err != nil {
+		return err
+	}
+
+	err = s.mailerClient.SendOTPEmail(user.Firstname+" "+user.Lastname, user.Email, otp.Code)
+	if err != nil {
+		s.otpRepo.DeleteOTP(user.ID)
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
+
+func (s *AuthService) VerifyOTP(email string, code int) (bool, error) {
+
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return false, fmt.Errorf("failed to retrieve user: %w", err)
+	}
+
+	return s.otpRepo.VerifyOTP(user.ID, code)
+}
+
+func (s *AuthService) UpdateUserPassword(email string, newPassword string) error {
+
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve user: %w", err)
+	}
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	return s.userRepo.UpdateUserPassword(user.ID, string(hashedPassword))
+}
+
+func (s *AuthService) DeleteOTP(email string) error {
+	user, err := s.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve user: %w", err)
+	}
+
+	return s.otpRepo.DeleteOTP(user.ID)
 }
 
 // Login authenticates a user and returns a JWT token if successful.

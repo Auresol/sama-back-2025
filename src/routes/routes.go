@@ -21,13 +21,12 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 
 	validate := utils.Validate
 	s3Client := pkg.NewS3Client(*cfg)
+	mailerClient := pkg.NewMailerService(cfg)
 
 	// Initialize services
 	authService := services.NewAuthService(
-		cfg.JWT.Secret,
-		cfg.JWT.Expiry,
-		cfg.RefreshJWT.Secret,
-		cfg.RefreshJWT.Expiry,
+		cfg,
+		mailerClient,
 		validate,
 	)
 	userService := services.NewUserService(validate)
@@ -59,8 +58,9 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		publicRoutes.POST("/register", authController.RegisterUser)
 		publicRoutes.POST("/login", authController.Login)
 		publicRoutes.POST("/refresh-token", authController.RefreshToken)
-		publicRoutes.POST("/forgot-password/request", authController.RequestOtp)
-		publicRoutes.POST("/forgot-password/validate", authController.ValidateOtp)
+		publicRoutes.POST("/password-reset/request-otp", authController.RequestOtp)
+		publicRoutes.POST("/password-reset/validate-otp", authController.ValidateOtp)
+		publicRoutes.POST("/password-reset/change-password", authController.ResetPassword)
 		publicRoutes.POST("/school", schoolController.CreateSchool)
 		publicRoutes.GET("/school", schoolController.GetAllSchools)
 	}

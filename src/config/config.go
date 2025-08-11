@@ -15,6 +15,7 @@ type Config struct {
 	RefreshJWT RefreshJWTConfig
 	Logging    LoggingConfig
 	S3         S3Config
+	MailerSend MailerSendConfig
 }
 
 type DatabaseConfig struct {
@@ -52,6 +53,13 @@ type S3Config struct {
 	PreSignedLifeTimeMinutes int
 }
 
+type MailerSendConfig struct {
+	Key           string
+	SenderEmail   string
+	SenderName    string
+	OTPTemplateID string
+}
+
 func LoadConfig() *Config {
 	// Load .env file if it exists
 	if err := godotenv.Load(); err != nil {
@@ -87,6 +95,12 @@ func LoadConfig() *Config {
 			Region:                   getEnv("S3_REGION"),
 			Bucket:                   getEnv("S3_BUCKET_NAME"),
 			PreSignedLifeTimeMinutes: getIntEnv("S3_PRESIGNED_LIFETIME_MINUTE"),
+		},
+		MailerSend: MailerSendConfig{
+			Key:           getEnv("MAILER_KEY"),
+			SenderEmail:   getEnv("MAILER_SENDER_EMAIL"),
+			SenderName:    getEnv("MAILER_SENDER_NAME"),
+			OTPTemplateID: getEnv("MAILER_OTP_TEMPLATE_ID"),
 		},
 	}
 }
