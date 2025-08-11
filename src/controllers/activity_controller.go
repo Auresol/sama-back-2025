@@ -256,7 +256,7 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 	// Apply authorization filtering
 	if claims.Role == "TCH" {
 		// Teacher can only see their own activities
-		ownerID = uint64(claims.UserID)
+		// ownerID = uint64(claims.UserID)
 		// Optionally, restrict by their school ID too if the activity model has SchoolID
 		// For now, relies on owner_id for TCH.
 	} else if claims.Role == "ADMIN" {

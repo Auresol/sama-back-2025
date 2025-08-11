@@ -171,7 +171,7 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, sem
 				0
 			) AS finished_percentage
 		FROM activities ac
-		LEFT JOIN records r ON r.activity_id = ac.id
+		LEFT JOIN records r ON r.activity_id = ac.id AND r.student_id = ?
 		LEFT JOIN schools s ON ac.school_id = s.id
 		WHERE ac.school_id = ? and
 			  ac.semester = ? and
@@ -220,7 +220,7 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, sem
 
 	query := baseQuery + orderByClause
 
-	if err := r.db.Raw(query, schoolID, semester, schoolYear, userID, userID, userID).Scan(&activities).Error; err != nil {
+	if err := r.db.Raw(query, userID, schoolID, semester, schoolYear, userID, userID, userID).Scan(&activities).Error; err != nil {
 		return activities, fmt.Errorf("failed to get activities: %w", err)
 	}
 

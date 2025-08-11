@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"sama/sama-backend-2025/src/middlewares"
+	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/services"
 
 	"github.com/gin-gonic/gin"
@@ -48,6 +49,15 @@ type UpdateUserProfileRequest struct {
 	Number            *uint   `json:"number,omitempty" binding:"omitempty,number" example:"2"` // Pointer for optional int update
 	Language          string  `json:"language" example:"th"`
 	BookmarkUserIDs   []uint  `json:"bookmark_user_ids" example:"1"`
+}
+
+type UserStatistic struct {
+	NonCreatedPercent float32                        `json:"non_created_percent"`
+	CreatedPercent    float32                        `json:"created_percent"`
+	SendedPercnet     float32                        `json:"sended_percent"`
+	ApprovedPercent   float32                        `json:"approved_percent"`
+	RejectedPercent   float32                        `json:"rejected_percent"`
+	Activities        []models.ActivityWithStatistic `json:"activities"`
 }
 
 // GetMyProfile retrieves the profile of the authenticated user.
@@ -313,68 +323,58 @@ func (c *UserController) GetAssignedActivities(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, activities) // Return an empty array or mock data
 }
 
-// // GetStatisticByID retrieves a list of record related to the authenticated user.
-// // This include records that user created (for student) or checking (for teacher)
-// // @Summary Get records related to the authenticated user
-// // @Description Retrieve a list of records that are assigned to or owned by the authenticated user.
-// // @Tags User
-// // @Security BearerAuth
-// // @Produce json
-// // @Success 200 {array} models.Record "List of related activities retrieved successfully"
-// // @Failure 401 {object} ErrorResponse "Unauthorized"
-// // @Failure 500 {object} ErrorResponse "Internal server error"
-// // @Router /user/{id}/statistic [get]
-// func (c *UserController) GetStatisticByID(ctx *gin.Context) {
-// 	// claims, ok := middlewares.GetUserClaimsFromContext(ctx)
-// 	// if !ok {
-// 	// 	ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-// 	// 	return
-// 	// }
-
-// 	// TODO: Implement the service call to fetch activities related to claims.UserID
-// 	// This service method would need to query activities where:
-// 	// 1. owner_id matches claims.UserID
-// 	// 2. coverage_type is 'ALL' (if applicable to this user's school)
-// 	// 3. user is in an exclusive_classroom (requires joining through activity_exclusive_classrooms and Classroom model's composite PK)
-// 	// 4. user is in exclusive_student_ids (requires joining through activity_exclusive_student_ids)
-// 	// This will be a more complex query in the repository.
-
-// 	// Example placeholder for activities:
-// 	// activities, err := c.activityService.GetActivitiesForUser(claims.UserID, claims.SchoolID, limit, offset)
-// 	// if err != nil {
-// 	//     ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve related activities: " + err.Error()})
-// 	//     return
-// 	// }
-
-// 	// For now, returning a placeholder response
-// 	ctx.JSON(http.StatusOK, []models.Record{}) // Return an empty array or mock data
-// }
-
-// RequestProfilePresignedURL generate presigned url for image uploading.
-// @Summary Get presigned url for image uploading
-// @Description Retrieve the profile details of the currently authenticated user.
+// GetStatisticByID retrieves a statistic of user
+// @Summary Get statistic of uesr
+// @Description Retrieve a list of activities that are assigned to or owned by the authenticated user.
 // @Tags User
 // @Security BearerAuth
+// @Param id path int true "User ID to get"
+// @Param semester query int false "School semester"
+// @Param school_year query int false "School year"
 // @Produce json
-// @Success 200 {object} SuccessfulResponse "User deleted successfully"
-// @Failure 401 {object} ErrorResponse "Unauthorized (missing or invalid token)"
+// @Success 200 {object} UserStatistic "List of related activities retrieved successfully"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /user/presigned-url [post]
-// func (h *UserController) RequestProfilePresignedURL(c *gin.Context) {
-// 	claims, ok := middlewares.GetUserClaimsFromContext(c)
-// 	if !ok {
-// 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
-// 		return
-// 	}
+// @Router /user/{id}/statistic [get]
+func (c *UserController) GetUserStatisticByID(ctx *gin.Context) {
+	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
+		return
+	}
 
-// 	url, value, err := h.userService.RequestProfilePicturePresignedURL(claims.UserID)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to generate presigned: " + err.Error()})
-// 		return
-// 	}
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid user ID"})
+		return
+	}
 
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"URL":   url,
-// 		"value": value,
-// 	})
-// }
+	semester, _ := strconv.ParseUint(ctx.DefaultQuery("semester", "0"), 10, 64)
+	schoolYear, _ := strconv.ParseUint(ctx.DefaultQuery("school_year", "0"), 10, 64)
+
+	// Example placeholder for activities:
+	activities,
+		totalNonCreated,
+		totalCreated,
+		totalSended,
+		totalApproved,
+		totalRejected,
+		err := c.userService.GetUserStatistic(uint(id), claims.SchoolID, uint(semester), uint(schoolYear))
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve statistic: " + err.Error()})
+		return
+	}
+
+	response := UserStatistic{
+		NonCreatedPercent: totalNonCreated,
+		CreatedPercent:    totalCreated,
+		SendedPercnet:     totalSended,
+		ApprovedPercent:   totalApproved,
+		RejectedPercent:   totalRejected,
+		Activities:        activities,
+	}
+
+	// For now, returning a placeholder response
+	ctx.JSON(http.StatusOK, response) // Return an empty array or mock data
+}

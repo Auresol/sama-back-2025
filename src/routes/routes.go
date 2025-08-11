@@ -74,7 +74,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		authRoutes.PUT("/user/:id", userController.UpdateUserProfile)
 		authRoutes.DELETE("/user/:id", userController.DeleteUser)
 		authRoutes.GET("/user/:id/activity", userController.GetAssignedActivities)
-		// authRoutes.POST("/user/presigned-url", userController.RequestProfilePresignedURL)
+		authRoutes.GET("/user/:id/statistic", userController.GetUserStatisticByID)
 
 		authRoutes.GET("/school/:id", schoolController.GetSchoolByID)
 		authRoutes.PUT("/school/:id", schoolController.UpdateSchool)
