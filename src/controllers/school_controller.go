@@ -643,7 +643,7 @@ func (h *SchoolController) GetSchoolStatisticByID(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /school/{id}/statistic [get]
+// @Router /school/{id}/statistic-file [get]
 func (h *SchoolController) GetSchoolStatisticFileByID(c *gin.Context) {
 	_, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
