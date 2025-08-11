@@ -10,7 +10,7 @@ import (
 type User struct {
 	ID uint `json:"id" gorm:"primarykey"`
 
-	StudentID         string  `json:"student_id,omitempty"`
+	StudentUniqueID   string  `json:"student_id,omitempty"`
 	Role              string  `json:"role" validate:"required,oneof=STD TCH ADMIN SAMA"`
 	Email             string  `json:"email" gorm:"uniqueIndex" validate:"required,email"` // Unique index for email
 	Password          string  `json:"-"`
@@ -27,7 +27,7 @@ type User struct {
 
 	ClassroomID     *uint      `json:"-"`
 	ClassroomObject *Classroom `json:"-" gorm:"foreignKey:ClassroomID"`
-	School          School     `json:"school,omitzero" gorm:"foreignKey:SchoolID"`
+	School          School     `json:"school,omitzero"`
 	Activities      []Activity `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 	BookmarkUsers   []User     `json:"-" gorm:"many2many:user_bookmarks"`
 
@@ -58,3 +58,8 @@ func (u *User) AfterFind(tx *gorm.DB) (err error) {
 }
 
 var ROLE = []string{"STD", "TCH", "ADMIN", "SAMA"}
+
+type UserWithFinishedPercent struct {
+	User
+	FinishedPercent float32 `json:"finished_percent" gorm:"-:all"`
+}

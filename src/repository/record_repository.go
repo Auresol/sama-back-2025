@@ -50,7 +50,7 @@ func (r *RecordRepository) GetAllRecords(
 ) ([]models.Record, int, error) {
 	var records []models.Record
 	var count int64
-	query := r.db.Model(&models.Record{})
+	query := r.db.Model(&models.Record{}).Preload("Student").Preload("Teacher")
 
 	if studentID != 0 {
 		query = query.Where("student_id = ?", studentID)
@@ -65,8 +65,7 @@ func (r *RecordRepository) GetAllRecords(
 		query = query.Where("status = ?", status)
 	}
 
-	// Add preloads if you want to fetch related data with the records
-	// query = query.Preload("Activity").Preload("School").Preload("Student").Preload("Teacher")
+	query.Order("created_at DESC")
 
 	countQuery := query
 	err := countQuery.Count(&count).Error

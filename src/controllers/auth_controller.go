@@ -85,7 +85,7 @@ func (h *AuthController) RegisterUser(c *gin.Context) {
 	}
 
 	user := &models.User{
-		StudentID:       req.StudentID,
+		StudentUniqueID: req.StudentID,
 		Email:           req.Email,
 		Password:        req.Password, // Plain password, will be hashed in service
 		Firstname:       req.Firstname,

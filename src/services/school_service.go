@@ -14,15 +14,19 @@ import (
 
 // SchoolService handles business logic for schools.
 type SchoolService struct {
-	schoolRepo *repository.SchoolRepository
-	validator  *validator.Validate
+	schoolRepo   *repository.SchoolRepository
+	userRepo     *repository.UserRepository
+	activityRepo *repository.ActivityRepository
+	validator    *validator.Validate
 }
 
 // NewSchoolService creates a new instance of SchoolService.
 func NewSchoolService(validate *validator.Validate) *SchoolService {
 	return &SchoolService{
-		schoolRepo: repository.NewSchoolRepository(),
-		validator:  validate,
+		schoolRepo:   repository.NewSchoolRepository(),
+		userRepo:     repository.NewUserRepository(),
+		activityRepo: repository.NewActivityRepository(),
+		validator:    validate,
 	}
 }
 
@@ -133,14 +137,71 @@ func (s *SchoolService) CountSchools() (int64, error) {
 }
 
 // // UpdateSchool updates an existing school's information.
-// func (s *SchoolService) GetSchoolStatisticByID(id uint) ([]models.User, int, int, error) {
-// 	// Fetch existing school to ensure it exists and to avoid overwriting unintended fields
-// 	school, err := s.schoolRepo.GetSchoolByID(id)
-// 	if err != nil {
-// 		return nil, 0, fmt.Errorf("school not found: %w", err)
-// 	}
+func (s *SchoolService) GetSchoolStatisticByID(id uint, classroom string, activityIDs []uint, semester, schoolYear uint) ([]models.UserWithFinishedPercent, int, int, error) {
 
-// 	users, err := s.userRepo.GetUsersBySchoolID(id)
+	// if either semester of school year is invalid, get current semester and year
+	if semester == 0 || schoolYear == 0 {
+		var err error
+		semester, schoolYear, err = s.schoolRepo.GetSchoolSemesterAndSchoolYearByID(id)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+	}
 
-// 	return s.schoolRepo.UpdateSchool(school)
-// }
+	// -1 on offset and limit to cancle pagination
+	users, _, err := s.userRepo.GetUsersBySchoolID(id, 0, "", "STD", classroom, -1, -1)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to get users: %w", err)
+	}
+
+	var fisnishedAmount int
+	usersWithStat := make([]models.UserWithFinishedPercent, len(users))
+
+	for i, user := range users {
+		// activity will sorted by it's id assending
+		activities, err := s.activityRepo.GetAssignedActivitiesByUserID(user.ID, id, semester, schoolYear, false)
+		if err != nil {
+			return nil, 0, 0, fmt.Errorf("failed to retrieve statistic of user with id %d: %w", user.ID, err)
+		}
+
+		var pos int
+		var sum, filterCount float32
+
+		// since activityIDs and activity is sorted by id ascending
+		// the filter algorithm apply here will be O(1)
+		for _, activity := range activities {
+
+			// Move the cursor forward until activitiyIDs[pos] is equal or greater than activity.ID
+			for pos < len(activityIDs) && activityIDs[pos] < activity.ID {
+				pos++
+			}
+
+			// Reach the end of filter, meaning no more activity will be apply
+			if pos >= len(activityIDs) {
+				break
+			}
+
+			// If the activityIDs existed in the filter, apply summation
+			if activityIDs[pos] == activity.ID {
+				sum += activity.FinishedPercentage
+				filterCount += 1
+			}
+		}
+
+		if filterCount > 0 {
+			sum /= filterCount
+
+		} else {
+			sum = 100
+		}
+
+		usersWithStat[i].User = user
+		usersWithStat[i].FinishedPercent = min(sum, 100)
+
+		if usersWithStat[i].FinishedPercent >= 100 {
+			fisnishedAmount++
+		}
+	}
+
+	return usersWithStat, fisnishedAmount, len(users) - fisnishedAmount, nil
+}

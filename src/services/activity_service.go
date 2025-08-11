@@ -138,7 +138,7 @@ func (r *ActivityService) GetAssignedActivitiesByUserID(userID, schoolID, semest
 		}
 	}
 
-	activities, err := r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear)
+	activities, err := r.activityRepo.GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve activities: %w", err)
 	}

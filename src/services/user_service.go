@@ -42,8 +42,8 @@ func (s *UserService) GetUserByEmail(email string) (*models.User, error) {
 
 // GetUsersBySchoolID retrieves users for a specific school.
 // This is for ADMINs to access users within their school.
-func (s *UserService) GetUsersBySchoolID(schoolID, userID uint, name, role string, limit, offset int) ([]models.User, int, error) {
-	return s.userRepo.GetUsersBySchoolID(schoolID, userID, name, role, limit, offset)
+func (s *UserService) GetUsersBySchoolID(schoolID, userID uint, name, role, classroom string, limit, offset int) ([]models.User, int, error) {
+	return s.userRepo.GetUsersBySchoolID(schoolID, userID, name, role, classroom, limit, offset)
 }
 
 // UpdateUserProfile updates a user's profile information.

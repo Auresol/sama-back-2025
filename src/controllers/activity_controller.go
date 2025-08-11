@@ -218,6 +218,7 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 // @Produce json
 // @Param owner_id query int false "Filter by owner User ID"
 // @Param school_id query int false "Filter by School ID (Requires SAMA)"
+// @Param classroom query string false "Filter by classroom"
 // @Param semester query int false "Filter by Semester"
 // @Param school_year query int false "Filter by School Year"
 // @Param limit query int false "Limit for pagination" default(10)
@@ -244,6 +245,7 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 		return
 	}
 
+	// classroom := ctx.DefaultQuery("classroom", "")
 	semester, _ := strconv.ParseUint(ctx.DefaultQuery("semester", "0"), 10, 64)
 	schoolYear, _ := strconv.ParseUint(ctx.DefaultQuery("school_year", "0"), 10, 64)
 	ownerID, _ := strconv.ParseUint(ctx.DefaultQuery("owner_id", "0"), 10, 64)

@@ -3,12 +3,14 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
 	"sama/sama-backend-2025/src/middlewares"
 	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/services"
+	"sama/sama-backend-2025/src/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -63,9 +65,9 @@ type UpdateSchoolRequest struct {
 }
 
 type SchoolStatisticResponse struct {
-	TotalFinished   uint          `json:"total_finished"`
-	TotalUnfinished uint          `json:"total_unfinished"`
-	Users           []models.User `json:"users"`
+	TotalFinished   int                              `json:"total_finished"`
+	TotalUnfinished int                              `json:"total_unfinished"`
+	Users           []models.UserWithFinishedPercent `json:"users"`
 }
 
 // CreateSchool handles the creation of a new school.
@@ -494,6 +496,7 @@ func (h *SchoolController) RevertSemester(c *gin.Context) {
 // @Param id path int true "School ID"
 // @Param name query string false "Filtered by name"
 // @Param role query string false "Filtered by role"
+// @Param classroom query string false "Filtered by classroom"
 // @Param limit query int false "Limit for pagination" default(10)
 // @Param offset query int false "Offset for pagination" default(0)
 // @Success 200 {object} PaginateUsersResponse "List of users retrieved successfully"
@@ -527,12 +530,13 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 		return
 	}
 
-	name := c.DefaultQuery("name", "")
-	status := c.DefaultQuery("role", "")
+	name := c.Query("name")
+	role := c.Query("role")
+	classroom := c.Query("classroom")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	users, count, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, name, status, limit, offset)
+	users, count, err := h.userService.GetUsersBySchoolID(uint(schoolID), claims.UserID, name, role, classroom, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
 		return
@@ -561,7 +565,7 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 // @Produce json
 // @Param id path int true "School ID"
 // @Param classroom query string true "Classroom string to query"
-// @Param activity_id query string false "Activity id list seperate by |"
+// @Param activity_id query string true "Activity id list seperate by |"
 // @Param semester query int false "Filter by Semester"
 // @Param school_year query int false "Filter by School Year"
 // @Success 200 {object} SchoolStatisticResponse "List of users statistic retrieve successfully"
@@ -570,7 +574,7 @@ func (h *SchoolController) GetUsersBySchoolID(c *gin.Context) {
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /school/{id}/statistic [get]
-func (h *SchoolController) GetStatistic(c *gin.Context) {
+func (h *SchoolController) GetSchoolStatisticByID(c *gin.Context) {
 	_, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
@@ -583,31 +587,41 @@ func (h *SchoolController) GetStatistic(c *gin.Context) {
 	// 	return
 	// }
 
-	_, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Invalid school ID"})
 		return
 	}
 
+	classroom := c.Query("classroom")
+	activityIDs, err := utils.SplitQueryUint(c.Query("activity_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Failed to read activity_ids query: " + err.Error()})
+		return
+	}
+	semester, _ := strconv.ParseUint(c.DefaultQuery("semester", "0"), 10, 64)
+	schoolYear, _ := strconv.ParseUint(c.DefaultQuery("school_year", "0"), 10, 64)
+
+	// Sort activity ids assending
+	sort.Slice(activityIDs, func(i, j int) bool {
+		return activityIDs[i] > activityIDs[j]
+	})
 	// // If ADMIN, ensure they are requesting users from their own school
 	// if claims.Role == "ADMIN" && claims.SchoolID != uint(schoolID) {
 	// 	c.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: ADMIN can only view users from their own school"})
 	// 	return
 	// }
 
-	// users, err := h.schoolService.GetSchoolStatisticByID(schoolID)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve users: " + err.Error()})
-	// 	return
-	// }
-
-	users := make([]models.User, 1)
-	users[0].FinishedPercent = 50
+	usersWithStat, finished, unfinished, err := h.schoolService.GetSchoolStatisticByID(uint(id), classroom, activityIDs, uint(semester), uint(schoolYear))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve statistic: " + err.Error()})
+		return
+	}
 
 	response := SchoolStatisticResponse{
-		TotalUnfinished: 1,
-		TotalFinished:   0,
-		Users:           users,
+		TotalFinished:   finished,
+		TotalUnfinished: unfinished,
+		Users:           usersWithStat,
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -23,9 +23,9 @@ type Record struct {
 	StatusLogs StatusLogs `json:"status_logs" gorm:"serializer:json" validate:"required"`
 	Status     string     `json:"status" validate:"required,oneof=CREATED SENDED APPROVED REJECTED"`
 
-	Activity Activity `json:"-" gorm:"foreignKey:ActivityID"`
-	Student  User     `json:"-" gorm:"foreignKey:StudentID"`
-	Teacher  *User    `json:"teacher,omitzero" gorm:"foreignKey:TeacherID"`
+	Activity Activity `json:"-"`
+	Student  User     `json:"student,omitzero" gorm:"foreignKey:StudentID;references:ID"`
+	Teacher  *User    `json:"teacher,omitzero" gorm:"foreignKey:TeacherID;references:ID"`
 
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`

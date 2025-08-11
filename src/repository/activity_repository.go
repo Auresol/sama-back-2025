@@ -68,6 +68,10 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.ActivityWithStati
             SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
             SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
             SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records 
+			COALESCE(
+				SUM(CASE WHEN r.status IN ('APPROVED', 'SENDED') THEN r.amount ELSE 0 END) * 100.0 / NULLIF(ac.finished_amount, 0),
+				0
+			) AS finished_percentage	
         FROM activities ac
         LEFT JOIN records r ON r.activity_id = ac.id
         LEFT JOIN schools s ON ac.school_id = s.id
@@ -147,28 +151,32 @@ func (r *ActivityRepository) GetAllActivities(ownerID, schoolID, semester, schoo
 	return activities, int(count), err
 }
 
-func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear uint) ([]models.ActivityWithStatistic, error) {
+func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, semester, schoolYear uint, sortByRequired bool) ([]models.ActivityWithStatistic, error) {
 	activities := make([]models.ActivityWithStatistic, 0)
 
 	// Query all activities assigned to user based on 3 condition
 	// 1. activities is for junior or senior
 	// 2. activitity exclusive classroom contain classroom of user
 	// 3. activity exclusive student id contain user
-	query := `
+	baseQuery := `
 		SELECT 
 			ac.*,
 			COALESCE(ac.deadline, s.default_activity_deadline) AS deadline,
 			SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
 			SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
 			SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
-			SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records	
+			SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records,
+			COALESCE(
+				SUM(CASE WHEN r.status IN ('APPROVED', 'SENDED') THEN r.amount ELSE 0 END) * 100.0 / NULLIF(ac.finished_amount, 0),
+				0
+			) AS finished_percentage
 		FROM activities ac
 		LEFT JOIN records r ON r.activity_id = ac.id
 		LEFT JOIN schools s ON ac.school_id = s.id
 		WHERE ac.school_id = ? and
 			  ac.semester = ? and
 			  ac.school_year = ? and
-		(
+		( 
 		-- Condition 1: Check general coverage for the user's "junior" status
 			-- We'll get the user's is_junior status from their classroom
 			EXISTS (
@@ -200,8 +208,17 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, sem
 			)
 		)
 		GROUP BY ac.id, s.default_activity_deadline
-		ORDER BY ac.is_required DESC, ac.id ASC
 	`
+
+	// Dynamically build the ORDER BY clause
+	var orderByClause string
+	if sortByRequired {
+		orderByClause = "ORDER BY ac.is_required DESC, ac.id ASC"
+	} else {
+		orderByClause = "ORDER BY ac.id ASC"
+	}
+
+	query := baseQuery + orderByClause
 
 	if err := r.db.Raw(query, schoolID, semester, schoolYear, userID, userID, userID).Scan(&activities).Error; err != nil {
 		return activities, fmt.Errorf("failed to get activities: %w", err)

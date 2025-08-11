@@ -35,8 +35,8 @@ type Activity struct {
 	SchoolYear uint `json:"school_year" validate:"required,gt=0"`
 	Semester   uint `json:"semester" validate:"required,gt=0"`
 
-	School                    School      `json:"-" gorm:"foreignKey:SchoolID"`
-	Owner                     User        `json:"-" gorm:"foreignKey:OwnerID"`
+	School                    School      `json:"-"`
+	Owner                     User        `json:"-"`
 	ExclusiveStudentObjects   []User      `json:"-" gorm:"many2many:activity_exclusive_student_ids"`
 	ExclusiveClassroomObjects []Classroom `json:"-" gorm:"many2many:activity_exclusive_classroom"`
 
@@ -76,8 +76,9 @@ var ACTIVITY_FINISHED_UNIT = []string{"TIMES", "HOURS"}
 // Activity represents a type of activity students perform, mapped to a PostgreSQL table.
 type ActivityWithStatistic struct {
 	Activity
-	TotalCreatedRecords  int `json:"total_created_records"`
-	TotalSendedRecords   int `json:"total_sended_records"`
-	TotalApprovedRecords int `json:"total_approved_records"`
-	TotalRejectedRecords int `json:"total_rejected_records"`
+	TotalCreatedRecords  int     `json:"total_created_records"`
+	TotalSendedRecords   int     `json:"total_sended_records"`
+	TotalApprovedRecords int     `json:"total_approved_records"`
+	TotalRejectedRecords int     `json:"total_rejected_records"`
+	FinishedPercentage   float32 `json:"finished_percentage"`
 }

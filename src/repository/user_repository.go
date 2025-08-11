@@ -83,7 +83,7 @@ func (r *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 
 // GetUsersBySchoolID retrieves all users belonging to a specific school with pagination.
 // This supports the "only able to access data from their school" feature.
-func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, name, role string, limit, offset int) ([]models.User, int, error) {
+func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, name, role, classroom string, limit, offset int) ([]models.User, int, error) {
 	var users []models.User
 	var count int64
 	// Start building the query
@@ -100,6 +100,15 @@ func (r *UserRepository) GetUsersBySchoolID(schoolID, userID uint, name, role st
 	if name != "" {
 		likeNameSearch := "%" + name + "%"
 		query = query.Where("CONCAT(users.firstname, ' ', users.lastname) LIKE ?", likeNameSearch)
+	}
+
+	if classroom != "" {
+		var classroomObject models.Classroom
+
+		if err := r.db.Select("id").Where("school_id = ? AND classroom = ?", schoolID, classroom).First(&classroomObject).Error; err != nil {
+			return nil, 0, fmt.Errorf("failed to retrieve classroom '%s': %w", classroom, err)
+		}
+		query = query.Where("users.classroom_id = ?", classroomObject.ID)
 	}
 
 	if userID != 0 {

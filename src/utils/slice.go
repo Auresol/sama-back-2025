@@ -17,16 +17,21 @@ func Contains(slice []string, item string) bool {
 }
 
 // Seperate each param by |, return as an array of int
-func SplitQueryInt(query string) ([]int, error) {
-	var params []int
+func SplitQueryUint(query string) ([]uint, error) {
+	var params []uint
+
+	if query == "" {
+		return params, nil
+	}
+
 	splittedQuery := strings.Split(query, "|")
 
 	for i, param := range splittedQuery {
-		paramInt, err := strconv.Atoi(param)
+		paramInt, err := strconv.ParseUint(param, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert parameter at %d: %w", i, err)
 		}
-		params = append(params, paramInt)
+		params = append(params, uint(paramInt))
 	}
 
 	return params, nil
