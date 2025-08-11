@@ -42,3 +42,8 @@ type PaginateSchoolsResponse struct {
 	Limit   int             `json:"limit" example:"10"`
 	Total   int             `json:"total" example:"20"`
 }
+
+// DownloadResponse represents the response for a successful presigned download request.
+type DownloadResponse struct {
+	URL string `json:"url" example:"https://your-s3-bucket.s3.amazonaws.com/user_id/image.png?X-Amz-..."`
+}

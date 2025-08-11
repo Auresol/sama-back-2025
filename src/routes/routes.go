@@ -30,7 +30,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		validate,
 	)
 	userService := services.NewUserService(validate)
-	schoolService := services.NewSchoolService(validate)
+	schoolService := services.NewSchoolService(s3Client, validate)
 	activityService := services.NewActivityService(validate)
 	recordService := services.NewRecordService(validate)
 	imageService := services.NewImageService(s3Client)
@@ -83,6 +83,7 @@ func SetupRoutes(cfg *config.Config) *gin.Engine {
 		authRoutes.POST("/school/revert-semester", schoolController.RevertSemester)
 		authRoutes.GET("/school/:id/user", schoolController.GetUsersBySchoolID)
 		authRoutes.GET("/school/:id/statistic", schoolController.GetSchoolStatisticByID)
+		authRoutes.POST("/school/:id/statistic-file", schoolController.GetSchoolStatisticFileByID)
 
 		authRoutes.POST("/activity", activityController.CreateActivity)
 		authRoutes.GET("/activity", activityController.GetAllActivities)

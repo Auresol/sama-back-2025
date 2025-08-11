@@ -628,22 +628,22 @@ func (h *SchoolController) GetSchoolStatisticByID(c *gin.Context) {
 }
 
 // GetSchoolStatisticFileByID get statistic file based on activity_id and classroom
-// @Summary Get statistic by school_id
-// @Description Retrieve a statistic of specific school.
+// @Summary Get statistic file by school_id
+// @Description Retrieve a presigned url of statistic file of specific school.
 // @Tags School
 // @Security BearerAuth
 // @Produce json
 // @Param id path int true "School ID"
-// @Param classroom query string true "Classroom string to query"
+// @Param classroom query string false "Classroom string to query"
 // @Param activity_id query string true "Activity id list seperate by |"
 // @Param semester query int false "Filter by Semester"
 // @Param school_year query int false "Filter by School Year"
-// @Success 200 {object} SchoolStatisticResponse "List of users statistic retrieve successfully"
+// @Success 200 {object} DownloadResponse "Presigned URL for download"
 // @Failure 400 {object} ErrorResponse "Invalid school ID or Activity id"
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Failure 403 {object} ErrorResponse "Forbidden (insufficient permissions or not authorized for this school)"
 // @Failure 500 {object} ErrorResponse "Internal server error"
-// @Router /school/{id}/statistic-file [get]
+// @Router /school/{id}/statistic-file [POST]
 func (h *SchoolController) GetSchoolStatisticFileByID(c *gin.Context) {
 	_, ok := middlewares.GetUserClaimsFromContext(c)
 	if !ok {
@@ -678,17 +678,13 @@ func (h *SchoolController) GetSchoolStatisticFileByID(c *gin.Context) {
 	// 	return
 	// }
 
-	usersWithStat, finished, unfinished, err := h.schoolService.GetSchoolStatisticByID(uint(id), classroom, activityIDs, uint(semester), uint(schoolYear))
+	presignedHTTPRequest, err := h.schoolService.GetSchoolStatisticFileByID(c.Request.Context(), uint(id), classroom, activityIDs, uint(semester), uint(schoolYear))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to retrieve statistic: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Message: "Failed to get presigned download URL: " + err.Error()})
 		return
 	}
 
-	response := SchoolStatisticResponse{
-		TotalFinished:   finished,
-		TotalUnfinished: unfinished,
-		Users:           usersWithStat,
-	}
-
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, DownloadResponse{
+		URL: presignedHTTPRequest.URL,
+	})
 }

@@ -1,14 +1,17 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
 
 	"sama/sama-backend-2025/src/models"
+	"sama/sama-backend-2025/src/pkg"
 	"sama/sama-backend-2025/src/repository"
 
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -17,15 +20,17 @@ type SchoolService struct {
 	schoolRepo   *repository.SchoolRepository
 	userRepo     *repository.UserRepository
 	activityRepo *repository.ActivityRepository
+	s3Client     *pkg.S3Client
 	validator    *validator.Validate
 }
 
 // NewSchoolService creates a new instance of SchoolService.
-func NewSchoolService(validate *validator.Validate) *SchoolService {
+func NewSchoolService(s3Client *pkg.S3Client, validate *validator.Validate) *SchoolService {
 	return &SchoolService{
 		schoolRepo:   repository.NewSchoolRepository(),
 		userRepo:     repository.NewUserRepository(),
 		activityRepo: repository.NewActivityRepository(),
+		s3Client:     s3Client,
 		validator:    validate,
 	}
 }
@@ -126,16 +131,6 @@ func (s *SchoolService) UpdateSchool(school *models.School) error {
 	return s.schoolRepo.UpdateSchool(school)
 }
 
-// DeleteSchool deletes a school by its ID.
-func (s *SchoolService) DeleteSchool(id uint) error {
-	return s.schoolRepo.DeleteSchool(id)
-}
-
-// CountSchools returns the total number of schools.
-func (s *SchoolService) CountSchools() (int64, error) {
-	return s.schoolRepo.CountSchools()
-}
-
 // // UpdateSchool updates an existing school's information.
 func (s *SchoolService) GetSchoolStatisticByID(id uint, classroom string, activityIDs []uint, semester, schoolYear uint) ([]models.UserWithFinishedPercent, int, int, error) {
 
@@ -204,4 +199,40 @@ func (s *SchoolService) GetSchoolStatisticByID(id uint, classroom string, activi
 	}
 
 	return usersWithStat, fisnishedAmount, len(users) - fisnishedAmount, nil
+}
+
+// GetSchoolByShortName retrieves a school by its short name.
+func (s *SchoolService) GetSchoolStatisticFileByID(ctx context.Context, id uint, classroom string, activityIDs []uint, semester, schoolYear uint) (*v4.PresignedHTTPRequest, error) {
+
+	school, err := s.schoolRepo.GetSchoolByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve school with id %d: %w", id, err)
+	}
+
+	// if either semester of school year is invalid, get current semester and year
+	if semester == 0 || schoolYear == 0 {
+		semester = school.Semester
+		schoolYear = school.SchoolYear
+	}
+
+	filepath := school.ShortName + "_summary.xlsx"
+
+	// TODO: generate excel file to filepath
+
+	request, err := s.s3Client.GetPresignedDownloadURL(ctx, filepath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get presigned download URL from S3 client: %w", err)
+	}
+
+	return request, nil
+}
+
+// DeleteSchool deletes a school by its ID.
+func (s *SchoolService) DeleteSchool(id uint) error {
+	return s.schoolRepo.DeleteSchool(id)
+}
+
+// CountSchools returns the total number of schools.
+func (s *SchoolService) CountSchools() (int64, error) {
+	return s.schoolRepo.CountSchools()
 }

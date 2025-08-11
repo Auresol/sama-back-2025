@@ -37,11 +37,6 @@ type DownloadRequest struct {
 	ObjectKey string `json:"object_key" binding:"required" example:"user_id/e3c4e512-421e-45a2-921d-a9f3c7e0c4f8.png"`
 }
 
-// DownloadResponse represents the response for a successful download request.
-type DownloadResponse struct {
-	URL string `json:"url" example:"https://your-s3-bucket.s3.amazonaws.com/user_id/image.png?X-Amz-..."`
-}
-
 // RequestUploadPresignedURL handles the request for an image upload presigned URL.
 // @Summary Get presigned URL for image upload
 // @Description Generates a presigned URL and form fields for a direct, secure image upload to S3.
