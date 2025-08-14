@@ -40,7 +40,7 @@ func NewUserController(
 // UpdateUserProfileRequest represents the request body for updating a user's profile.
 // Use a separate struct for update requests to control what fields can be updated.
 type UpdateUserProfileRequest struct {
-	StudentID         string  `json:"user_id,omitempty" example:"10101"`
+	StudentID         *string `json:"student_id,omitempty" example:"10101"`
 	Email             string  `json:"email" binding:"omitempty,email" example:"new_email@example.com"`
 	Phone             string  `json:"phone" example:"+1987654321"`
 	Firstname         string  `json:"firstname" example:"Jane"`
@@ -196,6 +196,7 @@ func (h *UserController) UpdateUserProfile(c *gin.Context) {
 		return
 	}
 
+	userToUpdate.StudentUniqueID = req.StudentID
 	userToUpdate.Email = req.Email
 	userToUpdate.Phone = req.Phone
 	userToUpdate.Firstname = req.Firstname

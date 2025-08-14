@@ -32,6 +32,7 @@ func NewActivityController(activityService *services.ActivityService, validate *
 type CreateActivityRequest struct {
 	Name                string                 `json:"name" binding:"required" example:"School Cleanup Drive"`
 	Template            map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
+	CoverImageUrl       *string                `json:"cover_image_url" example:"test/example"`
 	IsRequired          bool                   `json:"is_required" binding:"required" example:"true"`
 	IsForJunior         bool                   `json:"is_for_junior" validate:"required" example:"true"`
 	IsForSenior         bool                   `json:"is_for_senior" validate:"required" example:"true"`
@@ -50,6 +51,7 @@ type CreateActivityRequest struct {
 type UpdateActivityRequest struct {
 	Name                string                 `json:"name" binding:"required" example:"School Cleanup Drive"`
 	Template            map[string]interface{} `json:"template" binding:"required" swaggertype:"object,string" example:"field:test"`
+	CoverImageUrl       *string                `json:"cover_image_url" example:"test/example"`
 	IsRequired          bool                   `json:"is_required" binding:"required" example:"true"`
 	IsForJunior         bool                   `json:"is_for_junior" validate:"required" example:"true"`
 	IsForSenior         bool                   `json:"is_for_senior" validate:"required" example:"true"`
@@ -98,6 +100,7 @@ func (c *ActivityController) CreateActivity(ctx *gin.Context) {
 	activity := &models.Activity{
 		Name:                req.Name,
 		Template:            req.Template,
+		CoverImageUrl:       req.CoverImageUrl,
 		SchoolID:            claims.SchoolID,
 		IsRequired:          req.IsRequired,
 		IsForJunior:         req.IsForJunior,
@@ -337,6 +340,7 @@ func (c *ActivityController) UpdateActivity(ctx *gin.Context) {
 		ID:                  existingActivity.ID,
 		Name:                req.Name,
 		Template:            req.Template,
+		CoverImageUrl:       req.CoverImageUrl,
 		SchoolID:            existingActivity.SchoolID,
 		IsRequired:          req.IsRequired,
 		IsForJunior:         req.IsForJunior,

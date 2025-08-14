@@ -10,7 +10,7 @@ import (
 type User struct {
 	ID uint `json:"id" gorm:"primarykey"`
 
-	StudentUniqueID   string  `json:"student_id,omitempty"`
+	StudentUniqueID   *string `json:"student_id,omitempty"`
 	Role              string  `json:"role" validate:"required,oneof=STD TCH ADMIN SAMA"`
 	Email             string  `json:"email" gorm:"uniqueIndex" validate:"required,email"` // Unique index for email
 	Password          string  `json:"-"`

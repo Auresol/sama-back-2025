@@ -10,8 +10,9 @@ import (
 type Activity struct {
 	ID uint `json:"id" gorm:"primarykey"`
 
-	SchoolID uint   `json:"school_id" validate:"required"`
-	Name     string `json:"name" validate:"required"`
+	SchoolID      uint    `json:"school_id" validate:"required"`
+	Name          string  `json:"name" validate:"required"`
+	CoverImageUrl *string `json:"cover_image_url" validate:"required"`
 
 	Template map[string]interface{} `json:"template" gorm:"serializer:json" validate:"required"`
 
