@@ -3,73 +3,89 @@ package pkg
 import (
 	"context"
 	"fmt"
+	"log"
 	"sama/sama-backend-2025/src/config"
 	"time"
 
-	"github.com/mailersend/mailersend-go"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2"
+	"github.com/aws/aws-sdk-go-v2/service/sesv2/types"
 )
 
-// MailerService encapsulates the Mailersend client and email logic.
+// MailerService encapsulates the AWS SES v2 client and email configuration.
 type MailerService struct {
-	mailersendClient *mailersend.Mailersend
-	senderEmail      string
-	senderName       string
-	templateID       string
+	sesClient   *sesv2.Client
+	senderEmail string
+	senderName  string
 }
 
 // NewMailerService creates and returns a new MailerService instance.
-func NewMailerService(cfg *config.Config) *MailerService {
-	ms := mailersend.NewMailersend(cfg.MailerSend.Key)
+// It requires an AWS region and a verified sender email address.
+func NewMailerService(config *config.Config, cfg *aws.Config) *MailerService {
+
+	// Create an SES v2 client
+	sesClient := sesv2.NewFromConfig(*cfg)
+
 	return &MailerService{
-		mailersendClient: ms,
-		senderEmail:      cfg.MailerSend.SenderEmail,
-		senderName:       cfg.MailerSend.SenderName,
-		templateID:       cfg.MailerSend.OTPTemplateID,
+		sesClient:   sesClient,
+		senderEmail: config.Mailer.SenderEmail,
+		senderName:  config.Mailer.SenderName,
 	}
 }
 
-// SendOTPEmail sends an OTP email to a specified recipient.
-func (s *MailerService) SendOTPEmail(recipientName, recipientEmail string, otpCode int) error {
-	ctx := context.Background()
+// SendOTPEmail sends an OTP email to a specified recipient using AWS SES v2.
+func (s *MailerService) SendOTPEmail(ctx context.Context, recipientName, recipientEmail, otpCode string) error {
+	// Use a context with a timeout for the API call
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	from := mailersend.From{
-		Name:  s.senderName,
-		Email: s.senderEmail,
-	}
+	// Construct the email subject
+	subject := "Your One-Time Password (OTP)"
 
-	recipients := []mailersend.Recipient{
-		{
-			Name:  recipientName,
-			Email: recipientEmail,
+	// Construct the HTML and plain text bodies of the email
+	htmlBody := fmt.Sprintf(`
+		<html>
+		<body>
+			<h1>Hello %s,</h1>
+			<p>Your one-time password is: <strong>%s</strong></p>
+			<p>This code will expire in 5 minutes.</p>
+			<p>If you did not request this, please ignore this email.</p>
+		</body>
+		</html>
+	`, recipientName, otpCode)
+
+	textBody := fmt.Sprintf("Hello %s,\n\nYour one-time password is: %s\n\nThis code will expire in 5 minutes. If you did not request this, please ignore this email.", recipientName, otpCode)
+
+	// Build the email input
+	input := &sesv2.SendEmailInput{
+		Destination: &types.Destination{
+			ToAddresses: []string{recipientEmail},
 		},
-	}
-
-	personalization := []mailersend.Personalization{
-		{
-			Email: recipientEmail,
-			Data: map[string]interface{}{
-				"code": otpCode,
+		Content: &types.EmailContent{
+			Simple: &types.Message{
+				Subject: &types.Content{
+					Data: aws.String(subject),
+				},
+				Body: &types.Body{
+					Html: &types.Content{
+						Data: aws.String(htmlBody),
+					},
+					Text: &types.Content{
+						Data: aws.String(textBody),
+					},
+				},
 			},
 		},
+		FromEmailAddress: aws.String(fmt.Sprintf("%s <%s>", s.senderName, s.senderEmail)),
 	}
-
-	// Create and set up the message
-	message := s.mailersendClient.Email.NewMessage()
-	message.SetFrom(from)
-	message.SetRecipients(recipients)
-	message.SetSubject("Your One-Time Password (OTP)")
-	message.SetTemplateID(s.templateID)
-	message.SetPersonalization(personalization)
 
 	// Send the email
-	res, err := s.mailersendClient.Email.Send(ctx, message)
+	result, err := s.sesClient.SendEmail(ctx, input)
 	if err != nil {
-		return fmt.Errorf("failed to send OTP email: %w", err)
+		return fmt.Errorf("failed to send OTP email via SES: %w", err)
 	}
 
-	fmt.Printf("OTP email sent successfully to %s. Message ID: %s\n", recipientEmail, res.Header.Get("X-Message-Id"))
+	log.Printf("OTP email sent successfully. Message ID: %s", *result.MessageId)
 
 	return nil
 }

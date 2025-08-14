@@ -19,9 +19,13 @@ import (
 func SetupRoutes(cfg *config.Config) *gin.Engine {
 	router := gin.Default()
 
+	awsConfig := config.LoadAwsConfig(cfg)
+
+	// Load the default AWS configuration. This automatically handles credentials and region.
+
 	validate := utils.Validate
-	s3Client := pkg.NewS3Client(*cfg)
-	mailerClient := pkg.NewMailerService(cfg)
+	s3Client := pkg.NewS3Client(cfg, awsConfig)
+	mailerClient := pkg.NewMailerService(cfg, awsConfig)
 
 	// Initialize services
 	authService := services.NewAuthService(

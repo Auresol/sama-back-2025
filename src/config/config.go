@@ -1,10 +1,13 @@
 package config
 
 import (
+	"context"
 	"log"
 	"os"
 	"strconv"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/joho/godotenv"
 )
 
@@ -15,7 +18,7 @@ type Config struct {
 	RefreshJWT RefreshJWTConfig
 	Logging    LoggingConfig
 	S3         S3Config
-	MailerSend MailerSendConfig
+	Mailer     MailerConfig
 }
 
 type DatabaseConfig struct {
@@ -53,7 +56,7 @@ type S3Config struct {
 	PreSignedLifeTimeMinutes int
 }
 
-type MailerSendConfig struct {
+type MailerConfig struct {
 	Key           string
 	SenderEmail   string
 	SenderName    string
@@ -96,13 +99,23 @@ func LoadConfig() *Config {
 			Bucket:                   getEnv("S3_BUCKET_NAME"),
 			PreSignedLifeTimeMinutes: getIntEnv("S3_PRESIGNED_LIFETIME_MINUTE"),
 		},
-		MailerSend: MailerSendConfig{
+		Mailer: MailerConfig{
 			Key:           getEnv("MAILER_KEY"),
 			SenderEmail:   getEnv("MAILER_SENDER_EMAIL"),
 			SenderName:    getEnv("MAILER_SENDER_NAME"),
 			OTPTemplateID: getEnv("MAILER_OTP_TEMPLATE_ID"),
 		},
 	}
+}
+
+func LoadAwsConfig(config *Config) *aws.Config {
+	cfg, err := awsConfig.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.Fatalln("failed to load AWS SDK config: %w", err)
+	}
+	cfg.Region = config.S3.Region
+
+	return &cfg
 }
 
 func getEnv(key string) string {

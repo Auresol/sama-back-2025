@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
@@ -22,17 +21,10 @@ type S3Client struct {
 }
 
 // NewS3Client creates a new S3Client instance with a default lifetime for presigned URLs.
-func NewS3Client(config config.Config) *S3Client {
-
-	cfg, err := awsConfig.LoadDefaultConfig(context.TODO())
-	cfg.Region = config.S3.Region
-
-	if err != nil {
-		log.Fatal(err)
-	}
+func NewS3Client(config *config.Config, cfg *aws.Config) *S3Client {
 
 	return &S3Client{
-		presignClient: s3.NewPresignClient(s3.NewFromConfig(cfg)),
+		presignClient: s3.NewPresignClient(s3.NewFromConfig(*cfg)),
 		bucketName:    config.S3.Bucket,
 		lifetime:      time.Duration(config.S3.PreSignedLifeTimeMinutes) * time.Minute,
 	}
