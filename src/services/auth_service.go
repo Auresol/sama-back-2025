@@ -10,7 +10,6 @@ import (
 	"sama/sama-backend-2025/src/pkg"
 	"sama/sama-backend-2025/src/repository"
 	"sama/sama-backend-2025/src/utils"
-	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"golang.org/x/crypto/bcrypt"
@@ -141,7 +140,7 @@ func (s *AuthService) RequestOtp(email string) error {
 		return err
 	}
 
-	err = s.mailerClient.SendOTPEmail(context.TODO(), user.Firstname+" "+user.Lastname, user.Email, strconv.Itoa(otp.Code))
+	err = s.mailerClient.SendOTPEmail(context.TODO(), user.Firstname+" "+user.Lastname, user.Email, otp.Code)
 	if err != nil {
 		s.otpRepo.DeleteOTP(user.ID)
 		return fmt.Errorf("failed to send email: %w", err)
@@ -150,7 +149,7 @@ func (s *AuthService) RequestOtp(email string) error {
 	return nil
 }
 
-func (s *AuthService) VerifyOTP(email string, code int) (bool, error) {
+func (s *AuthService) VerifyOTP(email string, code string) (bool, error) {
 
 	user, err := s.userRepo.GetUserByEmail(email)
 	if err != nil {

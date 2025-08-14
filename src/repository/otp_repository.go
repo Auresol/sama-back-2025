@@ -48,7 +48,7 @@ func (r *OTPRepository) CreateOTP(userID uint) (*models.OTP, error) {
 }
 
 // VerifyOTP checks if a given OTP code is valid and not expired.
-func (r *OTPRepository) VerifyOTP(userID uint, code int) (bool, error) {
+func (r *OTPRepository) VerifyOTP(userID uint, code string) (bool, error) {
 	var otp models.OTP
 	result := r.db.Where("user_id = ? AND code = ?", userID, code).First(&otp)
 

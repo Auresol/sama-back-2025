@@ -5,7 +5,7 @@ import "time"
 type OTP struct {
 	ID        uint      `json:"id" gorm:"primarykey"`
 	UserID    uint      `json:"user_id"`
-	Code      int       `json:"code"`
+	Code      string    `json:"code"`
 	ExpiresAt time.Time `json:"expired_at"`
 
 	User User `json:"user"`

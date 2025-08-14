@@ -61,7 +61,7 @@ type RefreshTokenRequest struct {
 // ValidateOtpRequest represents the request body for validating an OTP and resetting password.
 type ValidateOtpRequest struct {
 	Email string `json:"email" binding:"required,email" validate:"required" example:"user@example.com"`
-	Otp   int    `json:"code" binding:"required" validate:"required" example:"123456"` // Assuming 6-digit OTP
+	Otp   string `json:"code" binding:"required" validate:"required" example:"123456"` // Assuming 6-digit OTP
 }
 
 // ValidateOtpRequest represents the request body for validating an OTP and resetting password.
