@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/repository"
+	"sama/sama-backend-2025/src/utils"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -127,6 +128,11 @@ func (r *UserService) GetUserStatistic(userID, schoolID uint, activityIDs []uint
 		return
 	}
 
+	if len(activityIDs) == 0 {
+		err = fmt.Errorf("activity id param is empty")
+		return
+	}
+
 	var filteredActivity []models.ActivityWithStatistic
 	var finishedAmount, filterCount float32
 	var pos int
@@ -160,12 +166,14 @@ func (r *UserService) GetUserStatistic(userID, schoolID uint, activityIDs []uint
 		}
 	}
 
-	size := filterCount / 100
-	totalNonCreated /= size
-	totalApproved /= size
-	totalCreated /= size
-	totalRejected /= size
-	totalSended /= size
+	if filterCount > 0 {
+		size := filterCount / 100
+		totalNonCreated = utils.NormallizePercent(totalNonCreated / size)
+		totalApproved = utils.NormallizePercent(totalApproved / size)
+		totalCreated = utils.NormallizePercent(totalCreated / size)
+		totalRejected = utils.NormallizePercent(totalRejected / size)
+		totalSended = utils.NormallizePercent(totalSended / size)
+	}
 
 	activities = filteredActivity
 

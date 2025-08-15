@@ -11,6 +11,7 @@ import (
 	"sama/sama-backend-2025/src/models"
 	"sama/sama-backend-2025/src/pkg"
 	"sama/sama-backend-2025/src/repository"
+	"sama/sama-backend-2025/src/utils"
 
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/go-playground/validator/v10"
@@ -197,9 +198,9 @@ func (s *SchoolService) GetSchoolStatisticByID(id uint, classroom string, activi
 		}
 
 		usersWithStat[i].User = user
-		usersWithStat[i].FinishedPercent = min(sum, 100)
+		usersWithStat[i].FinishedPercent = utils.NormallizePercent(usersWithStat[i].FinishedPercent)
 
-		if usersWithStat[i].FinishedPercent >= 100 {
+		if usersWithStat[i].FinishedPercent == 100 {
 			fisnishedAmount++
 		}
 	}
