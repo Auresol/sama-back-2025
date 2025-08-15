@@ -67,7 +67,7 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.ActivityWithStati
             SUM(CASE WHEN r.status = 'CREATED' THEN r.amount ELSE 0 END) AS total_created_records,
             SUM(CASE WHEN r.status = 'SENDED' THEN r.amount ELSE 0 END) AS total_sended_records,
             SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
-            SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records 
+            SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records,
 			COALESCE(
 				SUM(CASE WHEN r.status IN ('APPROVED', 'SENDED') THEN r.amount ELSE 0 END) * 100.0 / NULLIF(ac.finished_amount, 0),
 				0

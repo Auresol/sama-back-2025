@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"gorm.io/gorm"
 
@@ -59,6 +60,11 @@ func (s *SchoolService) CreateSchool(school *models.School) error {
 	// if !errors.Is(err, gorm.ErrRecordNotFound) {
 	// 	return fmt.Errorf("failed to check existing school by short name: %w", err)
 	// }
+
+	newSemesterList := models.SemesterYearList{
+		strconv.Itoa(int(school.SchoolYear)) + "/" + strconv.Itoa(int(school.Semester)),
+	}
+	school.AvaliableSemesterList = newSemesterList
 
 	// Create the school
 	return s.schoolRepo.CreateSchool(school)

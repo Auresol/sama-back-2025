@@ -1,6 +1,9 @@
 package models
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -21,8 +24,9 @@ type School struct {
 
 	Classrooms []string `json:"classrooms" gorm:"-:all" validate:"required"`
 
-	SchoolYear uint `json:"school_year" validate:"required,gt=0"` // School year must be positive
-	Semester   uint `json:"semester" validate:"required,gt=0"`    // Semester must be positive
+	SchoolYear            uint             `json:"school_year" validate:"required,gt=0"` // School year must be positive
+	Semester              uint             `json:"semester" validate:"required,gt=0"`    // Semester must be positive\
+	AvaliableSemesterList SemesterYearList `json:"avaliable_semester_list" gorm:"serializer:json"`
 
 	ClassroomObjects []Classroom `json:"-"`
 
@@ -46,4 +50,32 @@ func (s *School) AfterFind(tx *gorm.DB) (err error) {
 		s.Classrooms = append(s.Classrooms, obj.Classroom)
 	}
 	return nil
+}
+
+// SemesterYearList is a slice of slices, representing pairs of [semester, year].
+type SemesterYearList []string
+
+// Value converts the SemesterYearStringList to a JSON byte slice for storage.
+func (s SemesterYearList) Value() (driver.Value, error) {
+	if s == nil {
+		return nil, nil
+	}
+	jsonBytes, err := json.Marshal(s)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal SemesterYearStringList: %w", err)
+	}
+	return jsonBytes, nil
+}
+
+// Scan converts a JSON byte slice from the database back into a SemesterYearStringList.
+func (s *SemesterYearList) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("SemesterYearStringList Scan: unsupported value type: %T", value)
+	}
+	if len(bytes) == 0 {
+		*s = nil
+		return nil
+	}
+	return json.Unmarshal(bytes, s)
 }

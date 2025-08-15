@@ -126,3 +126,17 @@ func (r *RecordRepository) CountRecords(
 	err := query.Count(&count).Error
 	return int(count), err
 }
+
+// GetRecordTotalAmount get a total number of amount from all record filtered by activittyID and userID
+func (r *RecordRepository) GetRecordTotalAmount(activityID, userID uint) int {
+
+	var totalCount int64
+	query := `
+        SELECT 
+            SUM(r.amount) AS total_count
+        FROM records r
+        WHERE r.activity_id = ? AND student_id = ?
+    `
+	r.db.Raw(query, activityID, userID).Scan(&totalCount)
+	return int(totalCount)
+}

@@ -40,7 +40,7 @@ type CreateActivityRequest struct {
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount      uint                   `json:"finished_amount" binding:"required" example:"10"`
+	FinishedAmount      int                    `json:"finished_amount" binding:"required" example:"10"`
 	CanExceedLimit      bool                   `json:"can_exceed_limit" biding:"required" example:"false"`
 	Semester            uint                   `json:"semester,omitempty" example:"1"`
 	SchoolYear          uint                   `json:"school_year,omitempty" example:"2568"`
@@ -59,7 +59,7 @@ type UpdateActivityRequest struct {
 	ExclusiveStudentIDs []uint                 `json:"exclusive_student_ids"  binding:"required" example:"101"`
 	Deadline            *time.Time             `json:"deadline,omitempty" example:"2025-07-28T15:49:03.123Z"`
 	FinishedUnit        string                 `json:"finished_unit" binding:"required,oneof=TIMES HOURS" example:"HOURS"`
-	FinishedAmount      uint                   `json:"finished_amount" binding:"required" example:"10"`
+	FinishedAmount      int                    `json:"finished_amount" binding:"required" example:"10"`
 	CanExceedLimit      bool                   `json:"can_exceed_limit" biding:"required" example:"false"`
 	UpdateProtocol      string                 `json:"update_protocol" binding:"required,oneof=RE_EVALUATE_ALL_RECORDS IGNORE_PAST_RECORDS" example:"RE_EVALUATE_ALL_RECORDS"`
 }

@@ -82,15 +82,20 @@ func (s *RecordService) validateRecordData(record *models.Record) error {
 }
 
 // CreateRecord creates a new record after validation.
-func (s *RecordService) CreateRecord(record *models.Record, schoolID uint, createdByUserID uint) error {
+func (s *RecordService) CreateRecord(record *models.Record, schoolID uint, userID uint) error {
 
 	activity, err := s.activityRepo.GetActivityByID(record.ActivityID)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve school with id %d: %w", schoolID, err)
+		return fmt.Errorf("failed to retrieve activity with id %d: %w", schoolID, err)
 	}
 
 	if activity.SchoolID != schoolID {
 		return fmt.Errorf("school id in activity and school id in your token mismatch")
+	}
+
+	totalRecordAmountDone := s.recordRepo.GetRecordTotalAmount(activity.ID, userID)
+	if !activity.CanExceedLimit && totalRecordAmountDone+record.Amount > activity.FinishedAmount {
+		return fmt.Errorf("total amount from your records will exceed the limit")
 	}
 
 	// Validate input using struct tags

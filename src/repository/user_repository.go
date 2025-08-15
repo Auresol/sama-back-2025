@@ -27,6 +27,11 @@ func NewUserRepository() *UserRepository {
 func (r *UserRepository) CreateUser(user *models.User) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 
+		var school models.School
+		if err := tx.First(&school, "id = ?", user.SchoolID).Error; err != nil {
+			return fmt.Errorf("failed to retrieve user's school: %w", err)
+		}
+
 		// 1. Get classroom (if exised)
 		if user.Classroom != nil {
 			classroom := models.Classroom{}
