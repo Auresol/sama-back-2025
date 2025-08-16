@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"sama/sama-backend-2025/src/models"
+	"sama/sama-backend-2025/src/utils"
 )
 
 // ActivityRepository handles database operations for the Activity model.
@@ -69,7 +70,7 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.ActivityWithStati
             SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
             SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records,
 			COALESCE(
-				SUM(CASE WHEN r.status IN ('APPROVED', 'SENDED') THEN r.amount ELSE 0 END) * 100.0 / NULLIF(ac.finished_amount, 0),
+				SUM(CASE WHEN r.status IN ('APPROVED') THEN r.amount ELSE 0 END) * 100.0 / NULLIF(ac.finished_amount, 0),
 				0
 			) AS finished_percentage	
         FROM activities ac
@@ -87,6 +88,8 @@ func (r *ActivityRepository) GetActivityByID(id uint) (*models.ActivityWithStati
 		}
 		return nil, fmt.Errorf("failed to retrieve activity with records aggregates by ID: %w", err)
 	}
+
+	activity.FinishedPercentage = utils.NormallizePercent(activity.FinishedPercentage)
 
 	err = r.db.Model(&activity.Activity).
 		Preload("ExclusiveStudentObjects").
@@ -167,7 +170,7 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, sem
 			SUM(CASE WHEN r.status = 'APPROVED' THEN r.amount ELSE 0 END) AS total_approved_records,
 			SUM(CASE WHEN r.status = 'REJECTED' THEN r.amount ELSE 0 END) AS total_rejected_records,
 			COALESCE(
-				SUM(CASE WHEN r.status IN ('APPROVED', 'SENDED') THEN r.amount ELSE 0 END) * 100.0 / NULLIF(ac.finished_amount, 0),
+				SUM(CASE WHEN r.status IN ('APPROVED') THEN r.amount ELSE 0 END) * 100.0 / NULLIF(ac.finished_amount, 0),
 				0
 			) AS finished_percentage
 		FROM activities ac
@@ -222,6 +225,10 @@ func (r *ActivityRepository) GetAssignedActivitiesByUserID(userID, schoolID, sem
 
 	if err := r.db.Raw(query, userID, schoolID, semester, schoolYear, userID, userID, userID).Scan(&activities).Error; err != nil {
 		return activities, fmt.Errorf("failed to get activities: %w", err)
+	}
+
+	for _, act := range activities {
+		act.FinishedPercentage = utils.NormallizePercent(act.FinishedPercentage)
 	}
 
 	return activities, nil

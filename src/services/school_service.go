@@ -157,9 +157,12 @@ func (s *SchoolService) GetSchoolStatisticByID(id uint, classroom string, activi
 	}
 
 	var fisnishedAmount int
+
+	// New array to store user with their stats and filter out who doesn't belong
+	var userWithStatPos int
 	usersWithStat := make([]models.UserWithFinishedPercent, len(users))
 
-	for i, user := range users {
+	for _, user := range users {
 		// activity will sorted by it's id assending
 		activities, err := s.activityRepo.GetAssignedActivitiesByUserID(user.ID, id, semester, schoolYear, false)
 		if err != nil {
@@ -190,22 +193,19 @@ func (s *SchoolService) GetSchoolStatisticByID(id uint, classroom string, activi
 			}
 		}
 
+		// Only apply this user if at least one activity is presented
 		if filterCount > 0 {
-			sum /= filterCount
+			usersWithStat[userWithStatPos].User = user
+			usersWithStat[userWithStatPos].FinishedPercent = utils.NormallizePercent(sum / filterCount)
+			if usersWithStat[userWithStatPos].FinishedPercent == 100 {
+				fisnishedAmount++
+			}
 
-		} else {
-			sum = 100
-		}
-
-		usersWithStat[i].User = user
-		usersWithStat[i].FinishedPercent = utils.NormallizePercent(usersWithStat[i].FinishedPercent)
-
-		if usersWithStat[i].FinishedPercent == 100 {
-			fisnishedAmount++
+			userWithStatPos++
 		}
 	}
 
-	return usersWithStat, fisnishedAmount, len(users) - fisnishedAmount, nil
+	return usersWithStat[:userWithStatPos], fisnishedAmount, userWithStatPos - fisnishedAmount, nil
 }
 
 // GetSchoolByShortName retrieves a school by its short name.

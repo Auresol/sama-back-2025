@@ -233,7 +233,7 @@ func (c *ActivityController) GetActivityByID(ctx *gin.Context) {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /activity [get]
 func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
-	claims, ok := middlewares.GetUserClaimsFromContext(ctx)
+	_, ok := middlewares.GetUserClaimsFromContext(ctx)
 	if !ok {
 		ctx.JSON(http.StatusInternalServerError, ErrorResponse{Message: "User claims not found in context"})
 		return
@@ -243,10 +243,10 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 	// SAMA can fetch all activities (or filtered by any owner/school).
 	// ADMIN can fetch activities for their school (optionally filtered by owner in their school).
 	// TCH can only fetch their own activities.
-	if claims.Role != "SAMA" && claims.Role != "ADMIN" && claims.Role != "TCH" {
-		ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions to list activities"})
-		return
-	}
+	// if claims.Role != "SAMA" && claims.Role != "ADMIN" && claims.Role != "TCH" {
+	// 	ctx.JSON(http.StatusForbidden, ErrorResponse{Message: "Forbidden: Insufficient permissions to list activities"})
+	// 	return
+	// }
 
 	// classroom := ctx.DefaultQuery("classroom", "")
 	semester, _ := strconv.ParseUint(ctx.DefaultQuery("semester", "0"), 10, 64)
@@ -256,18 +256,18 @@ func (c *ActivityController) GetAllActivities(ctx *gin.Context) {
 	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(ctx.DefaultQuery("offset", "0"))
 
-	// Apply authorization filtering
-	if claims.Role == "TCH" {
-		// Teacher can only see their own activities
-		// ownerID = uint64(claims.UserID)
-		// Optionally, restrict by their school ID too if the activity model has SchoolID
-		// For now, relies on owner_id for TCH.
-	} else if claims.Role == "ADMIN" {
-		// Admin can only see activities within their school.
-		schoolID = uint64(claims.SchoolID)
-		// If owner_id is also provided by ADMIN, ensure that owner belongs to the same school.
-	}
-	// SAMA has no restrictions on ownerID or schoolID.
+	// // Apply authorization filtering
+	// if claims.Role == "TCH" {
+	// 	// Teacher can only see their own activities
+	// 	// ownerID = uint64(claims.UserID)
+	// 	// Optionally, restrict by their school ID too if the activity model has SchoolID
+	// 	// For now, relies on owner_id for TCH.
+	// } else if claims.Role == "ADMIN" {
+	// 	// Admin can only see activities within their school.
+	// 	schoolID = uint64(claims.SchoolID)
+	// 	// If owner_id is also provided by ADMIN, ensure that owner belongs to the same school.
+	// }
+	// // SAMA has no restrictions on ownerID or schoolID.
 
 	activities, count, err := c.activityService.GetAllActivities(uint(ownerID), uint(schoolID), uint(semester), uint(schoolYear), limit, offset)
 	if err != nil {
